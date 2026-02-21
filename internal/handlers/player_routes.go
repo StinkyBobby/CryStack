@@ -77,7 +77,6 @@ func RegisterPlayerRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 				}
 				c.Status(http.StatusNoContent)
 			})
-
 		}
 	}
 }

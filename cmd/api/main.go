@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -31,33 +30,6 @@ func main() {
 	defer sqlDB.Close()
 
 	log.Println("БД подключена")
-
-	// безопасная конверсия array -> jsonb только если колонка имеет data_type = 'ARRAY'
-	runSafeConvert := func(table, column string) {
-		sql := fmt.Sprintf(`
-	DO $$
-	BEGIN
-	IF EXISTS (
-		SELECT 1
-		FROM information_schema.columns
-		WHERE table_name = '%s'
-		AND column_name = '%s'
-		AND data_type = 'ARRAY'
-	) THEN
-		EXECUTE format('ALTER TABLE %I ALTER COLUMN %I TYPE jsonb USING to_json(%I)::jsonb', '%s', '%s', '%s');
-	END IF;
-	END
-	$$;`, table, column, table, column, column)
-		if err := gormDB.Exec(sql).Error; err != nil {
-			log.Printf("Не удалось конвертировать %s.%s: %v\n", table, column, err)
-		} else {
-			log.Printf("Проверка/конвертация выполнена для %s.%s\n", table, column)
-		}
-	}
-
-	runSafeConvert("players", "heroes")
-	runSafeConvert("teams", "current_roles")
-	runSafeConvert("teams", "wanted_roles")
 
 	if err := gormDB.AutoMigrate(&models.Player{}, &models.Session{}, &models.Team{}); err != nil {
 		log.Fatal("AutoMigrate error: ", err)

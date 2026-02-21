@@ -1,1 +1,4 @@
 .env
+crystack.exe
+.DS_Store
+*.log
