@@ -29,9 +29,8 @@ func (t *TeamRepositoryImpl) GetByID(id uint64) (*models.Team, error) {
 	err := t.db.Where("id = ?", id).First(&team).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, err
-	} else {
-		return &team, err
 	}
+	return &team, err
 }
 
 func (t *TeamRepositoryImpl) GetOpenTeams() ([]*models.Team, error) {
@@ -47,3 +46,5 @@ func (t *TeamRepositoryImpl) GetOpenTeams() ([]*models.Team, error) {
 func (t *TeamRepositoryImpl) Update(id uint64, team *models.Team) error {
 	return t.db.Model(&models.Team{}).Where("id = ?", id).Updates(team).Error
 }
+
+// Реализовать Delete

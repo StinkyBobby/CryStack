@@ -4,96 +4,94 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/StinkyBobby/CryStack/internal/config"
 	"github.com/StinkyBobby/CryStack/internal/repository"
 )
 
 type SteamServiceInterface interface {
-	GetSteamID(*http.Request) uint64
+	GetSteamID(*http.Request) uint64 // ✅ Имя совпадает с интерфейсом!
 	GetName(uint64) string
 	GetAvatar(uint64) string
 }
 
 type SteamService struct {
 	playerRepo repository.PlayerRepository
-	config     *config.Config
+	config     *config.Config // ✅ Принимаем готовый config!
 	httpClient *http.Client
 }
 
-func NewSteamService(playerRepo repository.PlayerRepository, apiKey string, httpClient *http.Client) *SteamService {
+func (s *SteamService) GetSteamIDFromRequest(request *http.Request) uint64 {
+	panic("unimplemented")
+}
+
+func NewSteamService(playerRepo repository.PlayerRepository, cfg *config.Config, httpClient *http.Client) *SteamService {
 	return &SteamService{
 		playerRepo: playerRepo,
-		config: &config.Config{
-			SteamAPIKey: apiKey,
-		},
+		config:     cfg, // ✅ Используем переданный config!
 		httpClient: httpClient,
 	}
+}
+
+func (s *SteamService) GetSteamID(r *http.Request) uint64 { // ✅ Имя совпадает!
+	return s.GetSteamIDFromHeader(r.Header.Get("X-SteamID"))
 }
 
 func (s *SteamService) GetSteamIDFromHeader(header string) uint64 {
 	if header == "" {
 		return 0
 	}
-	var steamID uint64
-	_, err := fmt.Sscanf(header, "%d", &steamID)
+	steamID, err := strconv.ParseUint(header, 10, 64)
 	if err != nil {
 		return 0
 	}
 	return steamID
 }
 
-// GetSteamID reads steam id from request header "X-SteamID"
-func (s *SteamService) GetSteamIDFromRequest(r *http.Request) uint64 {
-	return s.GetSteamIDFromHeader(r.Header.Get("X-SteamID"))
+// ✅ Один запрос для Name + Avatar!
+func (s *SteamService) GetProfile(steamID uint64) (name, avatar string, err error) {
+	url := fmt.Sprintf("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=%s&steamids=%d",
+		s.config.SteamAPIKey, steamID)
+
+	resp, err := s.httpClient.Get(url)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Response struct {
+			Players []struct {
+				Personaname string `json:"personaname"`
+				Avatar      string `json:"avatarmedium"` // ✅ avatarmedium лучше!
+			} `json:"players"`
+		} `json:"response"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", "", err
+	}
+
+	if len(result.Response.Players) == 0 {
+		return "", "", fmt.Errorf("player not found")
+	}
+
+	return result.Response.Players[0].Personaname, result.Response.Players[0].Avatar, nil
 }
 
 func (s *SteamService) GetName(steamID uint64) string {
-	url := fmt.Sprintf("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=%s&steamids=%d", s.config.SteamAPIKey, steamID)
-	resp, err := s.httpClient.Get(url)
+	name, _, err := s.GetProfile(steamID)
 	if err != nil {
 		return ""
 	}
-	defer resp.Body.Close()
-	var result struct {
-		Response struct {
-			Players []struct {
-				Personaname string `json:"personaname"`
-				Avatar      string `json:"avatar"`
-			} `json:"players"`
-		} `json:"response"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return ""
-	}
-	if len(result.Response.Players) == 0 {
-		return ""
-	}
-	return result.Response.Players[0].Personaname
+	return name
 }
 
 func (s *SteamService) GetAvatar(steamID uint64) string {
-	url := fmt.Sprintf("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=%s&steamids=%d", s.config.SteamAPIKey, steamID)
-	resp, err := s.httpClient.Get(url)
+	_, avatar, err := s.GetProfile(steamID)
 	if err != nil {
 		return ""
 	}
-	defer resp.Body.Close()
-	var result struct {
-		Response struct {
-			Players []struct {
-				Personaname string `json:"personaname"`
-				Avatar      string `json:"avatar"`
-			} `json:"players"`
-		} `json:"response"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return ""
-	}
-	if len(result.Response.Players) == 0 {
-		return ""
-	}
-	return result.Response.Players[0].Avatar
+	return avatar
 }

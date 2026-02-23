@@ -28,9 +28,8 @@ func (s *SessionRepositoryImpl) GetByToken(token string) (*models.Session, error
 	err := s.db.Where("token = ?", token).First(&session).Error
 	if err != nil {
 		return nil, err
-	} else {
-		return &session, err
 	}
+	return &session, err
 }
 
 func (s *SessionRepositoryImpl) DeleteByToken(token string) error {

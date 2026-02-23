@@ -16,7 +16,7 @@ import (
 func RegisterAuthRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Config, httpClient *http.Client) {
 	sessionRepo := repository.NewSessionRepository(gormDB)
 	playerRepo := repository.NewPlayerRepository(gormDB)
-	steamSvc := services.NewSteamService(playerRepo, cfg.SteamAPIKey, httpClient)
+	steamSvc := services.NewSteamService(playerRepo, cfg, httpClient)
 
 	auth := api.Group("/auth")
 	{
@@ -25,10 +25,15 @@ func RegisterAuthRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 			var body struct {
 				SteamID uint64 `json:"steam_id"`
 			}
-			_ = c.BindJSON(&body)
+
+			if err := c.ShouldBindJSON(&body); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+				return
+			}
+
 			steamID := body.SteamID
 			if steamID == 0 {
-				steamID = steamSvc.GetSteamIDFromRequest(c.Request)
+				steamID = steamSvc.GetSteamID(c.Request)
 			}
 			if steamID == 0 {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "steam_id missing"})
@@ -42,7 +47,10 @@ func RegisterAuthRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 				Avatar:      steamSvc.GetAvatar(steamID),
 				LastUpdated: time.Now(),
 			}
-			_ = playerRepo.Upsert(player)
+			if err := playerRepo.Upsert(player); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "player upsert failed"})
+				return
+			}
 
 			// генерируем JWT и сохраняем сессию
 			token, err := jwt.GenerateJWT(steamID, cfg.JWTSecret)
@@ -60,7 +68,14 @@ func RegisterAuthRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 				return
 			}
 
-			c.JSON(http.StatusOK, gin.H{"token": token})
+			c.JSON(http.StatusOK, gin.H{
+				"token": token,
+				"player": gin.H{
+					"steam_id": steamID,
+					"name":     player.Name,
+					"avatar":   player.Avatar,
+				},
+			})
 		})
 	}
 }

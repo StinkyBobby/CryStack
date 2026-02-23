@@ -3,10 +3,12 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/StinkyBobby/CryStack/internal/config"
 	"github.com/StinkyBobby/CryStack/internal/models"
 	"github.com/StinkyBobby/CryStack/internal/repository"
+	"github.com/StinkyBobby/CryStack/internal/services"
 	"github.com/StinkyBobby/CryStack/pkg/middleware"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -66,6 +68,47 @@ func RegisterPlayerRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 					return
 				}
+			})
+
+			protected.PUT("/:steam_id/refresh", func(c *gin.Context) {
+				idStr := c.Param("steam_id")
+				id, err := strconv.ParseUint(idStr, 10, 64)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				}
+
+				openDotaSvc := services.NewOpenDotaService(playerRepo, cfg, httpClient)
+
+				stats, err := openDotaSvc.GetPlayerStats(id)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "opendota fetch failed"})
+					return
+				}
+
+				player := &models.Player{
+					SteamID:       id,
+					Name:          stats.Name,
+					Avatar:        stats.Avatar,
+					Role:          stats.Role,
+					Style:         stats.Style,
+					Heroes:        stats.Heroes,
+					Winrate:       stats.WinRate,
+					LastUpdated:   time.Now(),
+					MMR:           stats.MMREstimate,
+					GPM:           stats.GPM,
+					XPM:           stats.XPM,
+					MatchesPlayed: stats.MatchesPlayed,
+				}
+
+				if err := playerRepo.Upsert(player); err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "player update failed"})
+					return
+				}
+
+				c.JSON(http.StatusOK, gin.H{
+					"message": "profile refreshed using OpenDota",
+					"player":  player,
+				})
 			})
 
 			protected.DELETE("/:steam_id", func(c *gin.Context) {
