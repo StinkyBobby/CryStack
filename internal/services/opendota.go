@@ -42,7 +42,7 @@ func NewOpenDotaService(playerRepo repository.PlayerRepository, cfg *config.Conf
 }
 
 func (s *OpenDotaService) GetPlayerStats(steamID uint64) (*PlayerStats, error) {
-	// ✅ 1. Основной профиль
+	//  1. Основной профиль
 	profileURL := fmt.Sprintf("https://api.opendota.com/api/players/%d", steamID)
 	resp, err := s.httpClient.Get(profileURL)
 	if err != nil {
@@ -72,14 +72,14 @@ func (s *OpenDotaService) GetPlayerStats(steamID uint64) (*PlayerStats, error) {
 		return nil, fmt.Errorf("json decode failed: %w", err)
 	}
 
-	// ✅ 2. Парсим герои (топ-10 по играм)
+	//  2. Парсим герои (топ-10 по играм)
 	var heroIDs []int
 	for _, hero := range profile.Heroes[:10] { // Топ-10 героев
 		heroIDs = append(heroIDs, hero.HeroID)
 	}
 	sort.Ints(heroIDs) // Сортируем для консистентности
 
-	// ✅ 3. Рассчитываем роль и стиль
+	//  3. Рассчитываем роль и стиль
 	role := calculateRole(heroIDs)
 	style := calculateStyle(profile.GPM)
 
@@ -99,7 +99,6 @@ func (s *OpenDotaService) GetPlayerStats(steamID uint64) (*PlayerStats, error) {
 
 // calculateRole по пулу героев
 func calculateRole(heroIDs []int) string {
-	// ✅ Правильный синтаксис map literals
 	carryHeroes := map[int]bool{
 		1:   true, // Anti-Mage
 		19:  true, // Axe
