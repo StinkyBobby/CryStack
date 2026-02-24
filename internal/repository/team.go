@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"errors"
+
 	"github.com/StinkyBobby/CryStack/internal/models"
 	"gorm.io/gorm"
 )
@@ -27,7 +29,10 @@ func (t *TeamRepositoryImpl) Create(team *models.Team) error {
 func (t *TeamRepositoryImpl) GetByID(id uint64) (*models.Team, error) {
 	var team models.Team
 	err := t.db.Where("id = ?", id).First(&team).Error
-	if err == gorm.ErrRecordNotFound {
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
 		return nil, err
 	}
 	return &team, err
@@ -36,11 +41,10 @@ func (t *TeamRepositoryImpl) GetByID(id uint64) (*models.Team, error) {
 func (t *TeamRepositoryImpl) GetOpenTeams() ([]*models.Team, error) {
 	var open []*models.Team
 	err := t.db.Where("is_open = ?", true).Find(&open).Error
-	if err == gorm.ErrRecordNotFound {
+	if err != nil {
 		return nil, err
-	} else {
-		return open, err
 	}
+	return open, err
 }
 
 func (t *TeamRepositoryImpl) Update(id uint64, team *models.Team) error {

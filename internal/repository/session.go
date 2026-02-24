@@ -29,7 +29,7 @@ func (s *SessionRepositoryImpl) GetByToken(token string) (*models.Session, error
 	if err != nil {
 		return nil, err
 	}
-	return &session, err
+	return &session, nil
 }
 
 func (s *SessionRepositoryImpl) DeleteByToken(token string) error {

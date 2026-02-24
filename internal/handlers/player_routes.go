@@ -16,6 +16,7 @@ import (
 
 func RegisterPlayerRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Config, httpClient *http.Client) {
 	playerRepo := repository.NewPlayerRepository(gormDB)
+	sessionRepo := repository.NewSessionRepository(gormDB)
 
 	players := api.Group("/players")
 	{
@@ -40,7 +41,7 @@ func RegisterPlayerRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 		})
 
 		protected := players.Group("")
-		protected.Use(middleware.AuthMiddleware(cfg))
+		protected.Use(middleware.AuthMiddleware(cfg, sessionRepo))
 		{
 			protected.POST("", func(c *gin.Context) {
 				var p models.Player

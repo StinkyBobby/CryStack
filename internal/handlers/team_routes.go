@@ -14,6 +14,7 @@ import (
 
 func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Config, httpClient *http.Client) {
 	teamRepo := repository.NewTeamRepository(gormDB)
+	sessonRepo := repository.NewSessionRepository(gormDB)
 
 	teams := api.Group("/teams")
 	{
@@ -38,7 +39,7 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 		})
 
 		protected := teams.Group("")
-		protected.Use(middleware.AuthMiddleware(cfg))
+		protected.Use(middleware.AuthMiddleware(cfg, sessonRepo))
 		{
 			protected.POST("", func(c *gin.Context) {
 				var t models.Team

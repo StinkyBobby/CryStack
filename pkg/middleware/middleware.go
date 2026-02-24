@@ -1,14 +1,18 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
+	"net/http"
 	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
 
 	"github.com/StinkyBobby/CryStack/internal/config"
+	"github.com/StinkyBobby/CryStack/internal/repository"
 	"github.com/StinkyBobby/CryStack/pkg/jwt"
 )
 
-func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
+func AuthMiddleware(cfg *config.Config, sessionRepo repository.SessionRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -28,9 +32,19 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		c.Set("steam_id", claims.SteamID)
+		steamID := claims.SteamID
+
+		session, err := sessionRepo.GetByToken(tokenStr)
+		if err != nil || session == nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "session not found"})
+			return
+		}
+		if session.ExpiredAt.Before(time.Now()) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "session expired"})
+			return
+		}
+
+		c.Set("steam_id", steamID)
 		c.Next()
 	}
 }
-
-// хзхз

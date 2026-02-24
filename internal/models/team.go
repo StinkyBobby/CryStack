@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type RolesJSON []string // Для current_roles/wanted_roles
+type RolesJSON []string
 
 func (r RolesJSON) Value() (driver.Value, error) {
 	if len(r) == 0 {

@@ -9,7 +9,6 @@ import (
 
 type HeroesJSON []int
 
-// GORM JSONB интерфейсы — сохраняет/читает []int ↔ JSONB
 func (hj HeroesJSON) Value() (driver.Value, error) {
 	if len(hj) == 0 {
 		return nil, nil
@@ -37,7 +36,7 @@ type Player struct {
 	Avatar        string     `json:"avatar" gorm:"column:avatar"`
 	Role          string     `json:"role" gorm:"column:role;size:20"`
 	Style         string     `json:"style" gorm:"column:style;size:20"`
-	Heroes        HeroesJSON `json:"heroes" gorm:"type:jsonb;column:heroes"` // ✅ Работает с []int!
+	Heroes        HeroesJSON `json:"heroes" gorm:"type:jsonb;column:heroes"`
 	Winrate       float64    `json:"winrate" gorm:"column:winrate"`
 	LastUpdated   time.Time  `json:"last_updated" gorm:"column:last_updated"`
 	MMR           int        `json:"mmr" gorm:"column:mmr;index"`
