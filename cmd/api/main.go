@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/StinkyBobby/CryStack/internal/config"
 	"github.com/StinkyBobby/CryStack/internal/handlers"
@@ -44,8 +45,15 @@ func main() {
 		c.JSON(200, gin.H{"message": "pong", "db": "ok"})
 	})
 
-	// передаём gormDB и cfg, http.Client будет создан в хендлерах/сервисах
-	handlers.RegisterRoutes(r, gormDB, cfg, &http.Client{})
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			IdleConnTimeout:     90 * time.Second,
+			TLSHandshakeTimeout: 10 * time.Second,
+		},
+	}
+	handlers.RegisterRoutes(r, gormDB, cfg, httpClient)
 
 	r.Run(":" + cfg.Port)
 }
