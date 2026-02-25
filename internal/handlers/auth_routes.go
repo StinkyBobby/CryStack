@@ -21,7 +21,6 @@ func RegisterAuthRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 	auth := api.Group("/auth")
 	{
 		auth.POST("/login", func(c *gin.Context) {
-			// читаем X-SteamID из заголовка или из JSON { "steam_id": "123..." }
 			var body struct {
 				SteamID uint64 `json:"steam_id"`
 			}
@@ -35,24 +34,30 @@ func RegisterAuthRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 			if steamID == 0 {
 				steamID = steamSvc.GetSteamID(c.Request)
 			}
+
 			if steamID == 0 {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "steam_id missing"})
 				return
 			}
 
-			// пробуем создать/обновить игрока минимально
+			name, avatar, err := steamSvc.GetProfile(steamID)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "steam api unreachable"})
+				return
+			}
+
 			player := &models.Player{
 				SteamID:     steamID,
-				Name:        steamSvc.GetName(steamID),
-				Avatar:      steamSvc.GetAvatar(steamID),
+				Name:        name,
+				Avatar:      avatar,
 				LastUpdated: time.Now(),
 			}
+
 			if err := playerRepo.Upsert(player); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "player upsert failed"})
 				return
 			}
 
-			// генерируем JWT и сохраняем сессию
 			token, err := jwt.GenerateJWT(steamID, cfg.JWTSecret)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "token generation failed"})
