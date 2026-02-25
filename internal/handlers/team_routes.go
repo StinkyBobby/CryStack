@@ -39,8 +39,8 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 			c.JSON(http.StatusOK, all)
 		})
 
-		teams.GET("/:id/matchmaking", func(c *gin.Context) {
-			idStr := c.Param("id")
+		teams.GET("/:steam_id/matchmaking", func(c *gin.Context) {
+			idStr := c.Param("steam_id")
 			teamID, _ := strconv.ParseUint(idStr, 10, 64)
 
 			tm, err := teamRepo.GetByID(teamID)
