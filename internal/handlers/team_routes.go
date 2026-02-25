@@ -7,12 +7,13 @@ import (
 	"github.com/StinkyBobby/CryStack/internal/config"
 	"github.com/StinkyBobby/CryStack/internal/models"
 	"github.com/StinkyBobby/CryStack/internal/repository"
+	"github.com/StinkyBobby/CryStack/internal/services"
 	"github.com/StinkyBobby/CryStack/pkg/middleware"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Config, httpClient *http.Client) {
+func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Config, matchmakingSvc *services.MatchmakingService) {
 	teamRepo := repository.NewTeamRepository(gormDB)
 	sessonRepo := repository.NewSessionRepository(gormDB)
 
@@ -36,6 +37,25 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 				return
 			}
 			c.JSON(http.StatusOK, all)
+		})
+
+		teams.GET("/:id/matchmaking", func(c *gin.Context) {
+			idStr := c.Param("id")
+			teamID, _ := strconv.ParseUint(idStr, 10, 64)
+
+			tm, err := teamRepo.GetByID(teamID)
+			if err != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+				return
+			}
+
+			res, err := matchmakingSvc.FindPlayersForTeam(tm)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+
+			c.JSON(http.StatusOK, res)
 		})
 
 		protected := teams.Group("")
