@@ -12,6 +12,7 @@ type TeamRepository interface {
 	GetByID(id uint64) (*models.Team, error)
 	GetOpenTeams() ([]*models.Team, error)
 	Update(id uint64, team *models.Team) error
+	DeleteByID(id uint64) error
 }
 
 type TeamRepositoryImpl struct {
@@ -51,4 +52,11 @@ func (t *TeamRepositoryImpl) Update(id uint64, team *models.Team) error {
 	return t.db.Model(&models.Team{}).Where("id = ?", id).Updates(team).Error
 }
 
-// Реализовать Delete
+func (t *TeamRepositoryImpl) DeleteByID(id uint64) error {
+	var team models.Team
+	err := t.db.Where("id = ?", id).First(&team).Error
+	if err != nil {
+		return err
+	}
+	return t.db.Delete(&team).Error
+}

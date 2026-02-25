@@ -69,6 +69,16 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 				}
 				c.JSON(http.StatusOK, t)
 			})
+
+			protected.DELETE("/:steam_id", func(c *gin.Context) {
+				idStr := c.Param("steam_id")
+				id, _ := strconv.ParseUint(idStr, 10, 64)
+				if err := teamRepo.DeleteByID(id); err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+					return
+				}
+				c.JSON(http.StatusOK, gin.H{"message": "Team deleted successfully"})
+			})
 		}
 	}
 }
