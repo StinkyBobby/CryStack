@@ -72,44 +72,33 @@ func RegisterPlayerRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 			})
 
 			protected.PUT("/:steam_id/refresh", func(c *gin.Context) {
-				idStr := c.Param("steam_id")
-				id, err := strconv.ParseUint(idStr, 10, 64)
-				if err != nil {
-					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-				}
+				idStr := c.Param("id")
+				steamID, _ := strconv.ParseUint(idStr, 10, 64)
 
-				openDotaSvc := services.NewOpenDotaService(playerRepo, cfg, httpClient)
-
-				stats, err := openDotaSvc.GetPlayerStats(id)
+				updatedData, err := services.NewOpenDotaService(httpClient).FetchPlayerData(steamID)
 				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "opendota fetch failed"})
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch data from OpenDota"})
 					return
 				}
 
-				player := &models.Player{
-					SteamID:       id,
-					Name:          stats.Name,
-					Avatar:        stats.Avatar,
-					Role:          stats.Role,
-					Style:         stats.Style,
-					Heroes:        stats.Heroes,
-					Winrate:       stats.WinRate,
-					LastUpdated:   time.Now(),
-					MMR:           stats.MMREstimate,
-					GPM:           stats.GPM,
-					XPM:           stats.XPM,
-					MatchesPlayed: stats.MatchesPlayed,
+				player, err := playerRepo.GetBySteamID(steamID)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "player not found in database"})
+					return
 				}
+
+				player.MMR = updatedData.MMR
+				player.GPM = updatedData.GPM
+				player.Winrate = updatedData.Winrate
+				player.Role = updatedData.Role
+				player.LastUpdated = time.Now()
 
 				if err := playerRepo.Upsert(player); err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "player update failed"})
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update player data"})
 					return
 				}
 
-				c.JSON(http.StatusOK, gin.H{
-					"message": "profile refreshed using OpenDota",
-					"player":  player,
-				})
+				c.JSON(http.StatusOK, player)
 			})
 
 			protected.DELETE("/:steam_id", func(c *gin.Context) {

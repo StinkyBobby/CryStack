@@ -5,174 +5,119 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"time"
 
-	"github.com/StinkyBobby/CryStack/internal/config"
-	"github.com/StinkyBobby/CryStack/internal/repository"
+	"github.com/StinkyBobby/CryStack/internal/models"
 )
 
-type OpenDotaServiceInterface interface {
-	GetPlayerStats(steamID uint64) (*PlayerStats, error)
-}
-
 type OpenDotaService struct {
-	playerRepo repository.PlayerRepository
-	cfg        *config.Config
 	httpClient *http.Client
 }
 
-type PlayerStats struct {
-	Name          string  `json:"name"`
-	Avatar        string  `json:"avatar"`
-	MMREstimate   int     `json:"mmr_estimate"`
-	GPM           float64 `json:"gpm"`
-	XPM           float64 `json:"xpm"`
-	WinRate       float64 `json:"win_rate"`
-	MatchesPlayed int     `json:"matches_played"`
-	Style         string  `json:"style"`
-	Role          string  `json:"role"`
-	Heroes        []int   `json:"heroes"`
+func NewOpenDotaService(client *http.Client) *OpenDotaService {
+	return &OpenDotaService{httpClient: client}
 }
 
-func NewOpenDotaService(playerRepo repository.PlayerRepository, cfg *config.Config, httpClient *http.Client) *OpenDotaService {
-	return &OpenDotaService{
-		playerRepo: playerRepo,
-		cfg:        cfg,
-		httpClient: httpClient,
-	}
+var heroRoles = map[int]string{
+	1: "Carry", 2: "Carry", 6: "Carry", 10: "Carry",
+	11: "Midlane", 17: "Midlane", 22: "Midlane",
+	7: "Offlane", 28: "Offlane", 38: "Offlane",
+	5: "Support", 20: "Support", 26: "Support",
 }
 
-func (s *OpenDotaService) GetPlayerStats(steamID uint64) (*PlayerStats, error) {
-	//  1. Основной профиль
-	profileURL := fmt.Sprintf("https://api.opendota.com/api/players/%d", steamID)
-	resp, err := s.httpClient.Get(profileURL)
+func (s *OpenDotaService) FetchPlayerData(steamID uint64) (*models.Player, error) {
+	url := fmt.Sprintf("https://api.opendota.com/api/players/%d", steamID)
+	resp, err := s.httpClient.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("profile fetch failed: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var profile struct {
-		Name            string `json:"name"`
-		Avatar          string `json:"avatar"`
-		MMR             int    `json:"mmr_estimate"`
-		SoloCompetitive int    `json:"solo_competitive_rank"`
-		Profile         struct {
-			Personaname string `json:"personaname"`
-			Avatar      string `json:"avatar"`
-		} `json:"profile"`
-		GPM           float64 `json:"gpm"`
-		XPM           float64 `json:"xpm"`
-		Winrate       float64 `json:"winrate"`
-		MatchesPlayed int     `json:"matches_played"`
-		Heroes        []struct {
-			HeroID int `json:"hero_id"`
-		} `json:"heroes"`
+	var profileData struct {
+		MmrEstimate struct {
+			Estimate int `json:"estimate"`
+		} `json:"mmr_estimate"`
+	}
+	json.NewDecoder(resp.Body).Decode(&profileData)
+
+	wlResp, _ := s.httpClient.Get(url + "/wl")
+	var wlData struct {
+		Win  float64 `json:"win"`
+		Loss float64 `json:"lose"`
+	}
+	json.NewDecoder(wlResp.Body).Decode(&wlData)
+	wlResp.Body.Close()
+
+	totalMatches := int(wlData.Win + wlData.Loss)
+	winrate := 0.0
+	if totalMatches > 0 {
+		winrate = (wlData.Win / float64(totalMatches)) * 100
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&profile); err != nil {
-		return nil, fmt.Errorf("json decode failed: %w", err)
+	mResp, _ := s.httpClient.Get(url + "/recentMatches")
+	var matches []struct {
+		HeroID int `json:"hero_id"`
+		Gpm    int `json:"gold_per_min"`
+		Xpm    int `json:"xp_per_min"`
+	}
+	json.NewDecoder(mResp.Body).Decode(&matches)
+	mResp.Body.Close()
+
+	var sumGpm, sumXpm int
+	roleCounts := make(map[string]int)
+	heroCounts := make(map[int]int)
+
+	for _, m := range matches {
+		sumGpm += m.Gpm
+		sumXpm += m.Xpm
+		heroCounts[m.HeroID]++
+		if role, ok := heroRoles[m.HeroID]; ok {
+			roleCounts[role]++
+		}
 	}
 
-	//  2. Парсим герои (топ-10 по играм)
-	var heroIDs []int
-	for _, hero := range profile.Heroes[:10] { // Топ-10 героев
-		heroIDs = append(heroIDs, hero.HeroID)
+	avgGpm, avgXpm := 0.0, 0.0
+	if len(matches) > 0 {
+		avgGpm = float64(sumGpm) / float64(len(matches))
+		avgXpm = float64(sumXpm) / float64(len(matches))
 	}
-	sort.Ints(heroIDs) // Сортируем для консистентности
 
-	//  3. Рассчитываем роль и стиль
-	role := calculateRole(heroIDs)
-	style := calculateStyle(profile.GPM)
+	bestRole := "Unknown"
+	maxCount := 0
+	for r, c := range roleCounts {
+		if c > maxCount {
+			maxCount = c
+			bestRole = r
+		}
+	}
 
-	return &PlayerStats{
-		Name:          profile.Profile.Personaname,
-		Avatar:        profile.Profile.Avatar,
-		MMREstimate:   profile.MMR,
-		GPM:           profile.GPM,
-		XPM:           profile.XPM,
-		WinRate:       profile.Winrate,
-		MatchesPlayed: profile.MatchesPlayed,
-		Style:         style,
-		Role:          role,
-		Heroes:        heroIDs,
+	type heroStat struct {
+		ID    int
+		Count int
+	}
+	var stats []heroStat
+	for id, count := range heroCounts {
+		stats = append(stats, heroStat{id, count})
+	}
+	sort.Slice(stats, func(i, j int) bool {
+		return stats[i].Count > stats[j].Count
+	})
+
+	topHeroes := models.HeroesJSON{}
+	for i := 0; i < len(stats) && i < 3; i++ {
+		topHeroes = append(topHeroes, stats[i].ID)
+	}
+
+	return &models.Player{
+		SteamID:       steamID,
+		MMR:           profileData.MmrEstimate.Estimate,
+		Winrate:       winrate,
+		GPM:           avgGpm,
+		XPM:           avgXpm,
+		MatchesPlayed: totalMatches,
+		Role:          bestRole,
+		Style:         "Aggressive", //Можно реализовать логику опеределения стиля
+		Heroes:        topHeroes,
+		LastUpdated:   time.Now(),
 	}, nil
-}
-
-// calculateRole по пулу героев
-func calculateRole(heroIDs []int) string {
-	carryHeroes := map[int]bool{
-		1:   true, // Anti-Mage
-		19:  true, // Axe
-		43:  true, // Alchemist
-		77:  true, // Outworld Destroyer
-		96:  true, // Spectre
-		98:  true, // Troll Warlord
-		107: true, // Phantom Assassin
-		113: true, // Alchemist (дубль)
-		75:  true, // Medusa
-		87:  true, // Juggernaut
-		9:   true, // Crystal Maiden (farm версия)
-		50:  true, // Monkey King
-		76:  true, // Slark
-		105: true, // Ember Spirit
-	}
-
-	supportHeroes := map[int]bool{
-		2:   true, // Crystal Maiden
-		4:   true, // Bane
-		33:  true, // Dark Seer
-		89:  true, // Naga Siren
-		102: true, // Io
-		117: true, // Oracle
-		79:  true, // Treant Protector
-		85:  true, // Winter Wyvern
-		41:  true, // KotL
-		61:  true, // Rubick
-	}
-
-	midHeroes := map[int]bool{
-		6:  true, // Puck
-		8:  true, // Storm Spirit
-		20: true, // Batrider
-		99: true, // Dark Willow
-		91: true, // Lone Druid
-		65: true, // Leshrac
-		97: true, // Queen of Pain
-	}
-
-	carryCount := 0
-	supportCount := 0
-	midCount := 0
-
-	for _, heroID := range heroIDs {
-		if carryHeroes[heroID] {
-			carryCount++
-		}
-		if supportHeroes[heroID] {
-			supportCount++
-		}
-		if midHeroes[heroID] {
-			midCount++
-		}
-	}
-
-	// Доминирующая роль (≥3 героя = основная роль)
-	switch {
-	case carryCount >= 3:
-		return "carry"
-	case supportCount >= 3:
-		return "support"
-	case midCount >= 2:
-		return "mid"
-	default:
-		return "offlane"
-	}
-}
-
-func calculateStyle(gpm float64) string {
-	if gpm > 750 {
-		return "farm"
-	} else if gpm > 550 {
-		return "balanced"
-	}
-	return "support"
 }
