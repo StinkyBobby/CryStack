@@ -31,6 +31,14 @@ func NewMatchmakingService(playerRepo repository.PlayerRepository, teamRepo repo
 	}
 }
 
+func (m *MatchmakingService) getLeaderMMR(steamID uint64) int {
+	leader, err := m.playerRepo.GetBySteamID(steamID)
+	if err != nil {
+		return 4500
+	}
+	return leader.MMR
+}
+
 func (m *MatchmakingService) FindPlayersForTeam(team *models.Team) ([]*MatchResult, error) {
 	players, err := m.playerRepo.GetAll()
 	if err != nil {
@@ -41,38 +49,42 @@ func (m *MatchmakingService) FindPlayersForTeam(team *models.Team) ([]*MatchResu
 	leaderMMR := m.getLeaderMMR(team.LeaderSteamID)
 
 	for _, player := range players {
+		if player.SteamID == team.LeaderSteamID {
+			continue
+		}
+
+		isWanted := false
 		for _, wantedRole := range team.WantedRoles {
 			if player.Role == wantedRole {
-				score := m.calculatePlayerFit(player, leaderMMR)
-				if score >= 0.6 {
-					results = append(results, &MatchResult{
-						Player:  player,
-						Score:   score,
-						RoleFit: true,
-						MMRDiff: int(math.Abs(float64(player.MMR - leaderMMR))),
-					})
-				}
+				isWanted = true
 				break
+			}
+		}
+
+		if isWanted {
+			score := m.calculatePlayerFit(player, leaderMMR)
+
+			if score >= 0.6 {
+				results = append(results, &MatchResult{
+					Player:  player,
+					Score:   score,
+					RoleFit: true,
+					MMRDiff: int(math.Abs(float64(player.MMR - leaderMMR))),
+				})
 			}
 		}
 	}
 
+	// Сортировка по убыванию Score
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].Score > results[j].Score
 	})
 
+	// Возвращаем топ-5
 	if len(results) > 5 {
 		return results[:5], nil
 	}
 	return results, nil
-}
-
-func (m *MatchmakingService) getLeaderMMR(steamID uint64) int {
-	leader, err := m.playerRepo.GetBySteamID(steamID)
-	if err != nil {
-		return 4500
-	}
-	return leader.MMR
 }
 
 func (m *MatchmakingService) calculatePlayerFit(player *models.Player, leaderMMR int) float64 {
@@ -87,23 +99,23 @@ func (m *MatchmakingService) calculatePlayerFit(player *models.Player, leaderMMR
 		score += 0.20
 	}
 
-	// 2. GPM (600+ = 25%, 500+ = 15%)
+	// 2. GPM (Приводим float64 к сравнению)
 	switch {
-	case player.GPM >= 600:
+	case player.GPM >= 600.0:
 		score += 0.25
-	case player.GPM >= 500:
+	case player.GPM >= 500.0:
 		score += 0.15
 	}
 
-	// 3. Winrate (55%+ = 20%, 50%+ = 10%)
+	// 3. Winrate
 	switch {
-	case player.Winrate >= 55:
+	case player.Winrate >= 55.0:
 		score += 0.20
-	case player.Winrate >= 50:
+	case player.Winrate >= 50.0:
 		score += 0.10
 	}
 
-	// 4. Опыт (100+ матчей = 15%)
+	// 4. Опыт
 	if player.MatchesPlayed >= 100 {
 		score += 0.15
 	}
