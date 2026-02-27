@@ -72,7 +72,7 @@ func RegisterPlayerRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 			})
 
 			protected.PUT("/:steam_id/refresh", func(c *gin.Context) {
-				idStr := c.Param("id")
+				idStr := c.Param("steam_id")
 				steamID, _ := strconv.ParseUint(idStr, 10, 64)
 
 				updatedData, err := services.NewOpenDotaService(httpClient).FetchPlayerData(steamID)
@@ -91,6 +91,14 @@ func RegisterPlayerRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 				player.GPM = updatedData.GPM
 				player.Winrate = updatedData.Winrate
 				player.Role = updatedData.Role
+
+				player.XPM = updatedData.XPM                     // <-- Теперь XPM не будет 0
+				player.MatchesPlayed = updatedData.MatchesPlayed // <-- Теперь матчи не будут 0
+				player.Heroes = updatedData.Heroes               // <-- Теперь герои не будут null
+				player.Style = updatedData.Style                 // <-- Стиль тоже подтянется
+				player.Avatar = updatedData.Avatar               // <-- Аватар тоже стоит обновить, если сменил
+				player.Name = updatedData.Name                   // <-- И никнейм
+
 				player.LastUpdated = time.Now()
 
 				if err := playerRepo.Upsert(player); err != nil {
