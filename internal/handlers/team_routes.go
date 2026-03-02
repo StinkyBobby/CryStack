@@ -76,7 +76,7 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 
 			protected.POST("/:id/matchmaking/auto-invite", func(c *gin.Context) {
 				idStr := c.Param("id")
-				teamID, _ := strconv.Atoi(idStr)
+				teamID, _ := strconv.ParseUint(idStr, 10, 64)
 
 				tm, err := teamRepo.GetByID(uint64(teamID))
 				if err != nil {

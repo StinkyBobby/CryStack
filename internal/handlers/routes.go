@@ -21,5 +21,6 @@ func RegisterRoutes(r *gin.Engine, gormDB *gorm.DB, cfg *config.Config, httpClie
 		RegisterAuthRoutes(api, gormDB, cfg, httpClient)
 		RegisterPlayerRoutes(api, gormDB, cfg, httpClient)
 		RegisterTeamRoutes(api, gormDB, cfg, matchmakingSvc)
+		RegisterInviteRoutes(api, gormDB, cfg)
 	}
 }

@@ -44,10 +44,16 @@ func RegisterInviteRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 				invite.Status = "accepted"
 
 				var player models.Player
-				gormDB.Where("steam_id = ?", invite.SteamID).First(&player)
+				if err := gormDB.Where("steam_id = ?", invite.SteamID).First(&player).Error; err != nil {
+					c.JSON(http.StatusNotFound, gin.H{"error": "player not found"})
+					return
+				}
 
 				var team models.Team
-				gormDB.First(&team, invite.TeamID)
+				if err := gormDB.First(&team, invite.TeamID).Error; err != nil {
+					c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+					return
+				}
 
 				newWanted := models.RolesJSON{}
 				roleFound := false
@@ -65,10 +71,12 @@ func RegisterInviteRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 				tx := gormDB.Begin()
 				if err := tx.Save(&invite).Error; err != nil {
 					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update invite"})
 					return
 				}
 				if err := tx.Save(&team).Error; err != nil {
 					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update team"})
 					return
 				}
 				tx.Commit()

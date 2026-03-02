@@ -31,7 +31,7 @@ func (r *RolesJSON) Scan(value interface{}) error {
 }
 
 type Team struct {
-	ID            int       `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
+	ID            uint64       `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
 	Name          string    `json:"name" gorm:"column:name;size:64;not null"`
 	LeaderSteamID uint64    `json:"leader_steam_id" gorm:"column:leader_steam_id;index"`
 	CurrentRoles  RolesJSON `json:"current_roles" gorm:"type:jsonb;column:current_roles"`
