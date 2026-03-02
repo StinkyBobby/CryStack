@@ -40,6 +40,10 @@ func (m *MatchmakingService) getLeaderMMR(steamID uint64) int {
 }
 
 func (m *MatchmakingService) FindPlayersForTeam(team *models.Team) ([]*MatchResult, error) {
+	if len(team.WantedRoles) == 0 {
+		return []*MatchResult{}, nil
+	}
+
 	players, err := m.playerRepo.GetAll()
 	if err != nil {
 		return nil, err
@@ -64,7 +68,7 @@ func (m *MatchmakingService) FindPlayersForTeam(team *models.Team) ([]*MatchResu
 		if isWanted {
 			score := m.calculatePlayerFit(player, leaderMMR)
 
-			if score >= 0.6 {
+			if score >= 0.4 {
 				results = append(results, &MatchResult{
 					Player:  player,
 					Score:   score,

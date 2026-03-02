@@ -74,6 +74,43 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 				c.JSON(http.StatusOK, t)
 			})
 
+			protected.POST("/:id/matchmaking/auto-invite", func(c *gin.Context) {
+				idStr := c.Param("id")
+				teamID, _ := strconv.Atoi(idStr)
+
+				tm, err := teamRepo.GetByID(uint64(teamID))
+				if err != nil {
+					c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+					return
+				}
+
+				res, err := matchmakingSvc.FindPlayersForTeam(tm)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+					return
+				}
+
+				var createdInvites []models.Invite
+				for _, match := range res {
+					invite := models.Invite{
+						TeamID:  uint64(tm.ID),
+						SteamID: match.Player.SteamID,
+						Status:  "pending",
+					}
+
+					if err := gormDB.Create(&invite).Error; err != nil {
+						continue
+					}
+					createdInvites = append(createdInvites, invite)
+				}
+
+				c.JSON(http.StatusOK, gin.H{
+					"message":      "Auto-invite complete",
+					"invites_sent": len(createdInvites),
+					"candidates":   res,
+				})
+			})
+
 			protected.PUT("/:steam_id", func(c *gin.Context) {
 				idStr := c.Param("steam_id")
 				id, _ := strconv.ParseUint(idStr, 10, 64)
