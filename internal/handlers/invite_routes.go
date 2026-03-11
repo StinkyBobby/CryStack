@@ -17,6 +17,28 @@ func RegisterInviteRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 	invites := api.Group("/invites")
 	invites.Use(middleware.AuthMiddleware(cfg, sessionRepo))
 	{
+		invites.GET("/my", func(c *gin.Context) {
+			steamID, _ := c.Get("steam_id")
+			myInvites := []models.Invite{}
+
+			if err := gormDB.Where("steam_id = ?", steamID).Order("created_at desc").Find(&myInvites).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch invites"})
+				return
+			}
+			c.JSON(http.StatusOK, myInvites)
+		})
+
+		invites.GET("/team/:team_id", func(c *gin.Context) {
+			teamID := c.Param("team_id")
+			teamInvites := []models.Invite{}
+
+			if err := gormDB.Where("team_id = ?", teamID).Order("created_at desc").Find(&teamInvites).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch team invites"})
+				return
+			}
+			c.JSON(http.StatusOK, teamInvites)
+		})
+
 		invites.PATCH("/:id/respond", func(c *gin.Context) {
 			inviteID := c.Param("id")
 			var body struct {

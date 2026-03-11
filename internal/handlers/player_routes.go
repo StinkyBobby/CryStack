@@ -92,12 +92,12 @@ func RegisterPlayerRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 				player.Winrate = updatedData.Winrate
 				player.Role = updatedData.Role
 
-				player.XPM = updatedData.XPM                     // <-- Теперь XPM не будет 0
-				player.MatchesPlayed = updatedData.MatchesPlayed // <-- Теперь матчи не будут 0
-				player.Heroes = updatedData.Heroes               // <-- Теперь герои не будут null
-				player.Style = updatedData.Style                 // <-- Стиль тоже подтянется
-				player.Avatar = updatedData.Avatar               // <-- Аватар тоже стоит обновить, если сменил
-				player.Name = updatedData.Name                   // <-- И никнейм
+				player.XPM = updatedData.XPM
+				player.MatchesPlayed = updatedData.MatchesPlayed
+				player.Heroes = updatedData.Heroes
+				player.Style = updatedData.Style
+				player.Avatar = updatedData.Avatar
+				player.Name = updatedData.Name
 
 				player.LastUpdated = time.Now()
 

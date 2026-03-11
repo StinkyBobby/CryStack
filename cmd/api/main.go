@@ -32,7 +32,7 @@ func main() {
 
 	log.Println("БД подключена")
 
-	if err := gormDB.AutoMigrate(&models.Player{}, &models.Session{}, &models.Team{}); err != nil {
+	if err := gormDB.AutoMigrate(&models.Player{}, &models.Session{}, &models.Team{}, &models.Invite{}); err != nil {
 		log.Fatal("AutoMigrate error: ", err)
 	}
 
