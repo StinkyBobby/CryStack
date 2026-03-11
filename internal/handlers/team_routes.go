@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -12,6 +13,29 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+func processPlayerRemoval(team *models.Team, player *models.Player, db *gorm.DB) error {
+	roleFound := false
+	newCurrent := models.RolesJSON{}
+
+	for _, r := range team.CurrentRoles {
+		if r == player.Role && !roleFound {
+			roleFound = true
+			team.WantedRoles = append(team.WantedRoles, r)
+		} else {
+			newCurrent = append(newCurrent, r)
+		}
+	}
+
+	if !roleFound {
+		return fmt.Errorf("player with this role not found in team")
+	}
+
+	team.CurrentRoles = newCurrent
+	team.IsOpen = true
+
+	return db.Save(team).Error
+}
 
 func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Config, matchmakingSvc *services.MatchmakingService) {
 	teamRepo := repository.NewTeamRepository(gormDB)
@@ -61,6 +85,57 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 		protected := teams.Group("")
 		protected.Use(middleware.AuthMiddleware(cfg, sessonRepo))
 		{
+			// ДОЮАВИТЬ В POSTMAN
+			protected.POST("/:id/leave", func(c *gin.Context) {
+				teamID := c.Param("id")
+				userSteamID, _ := c.Get("steam_id")
+
+				var team models.Team
+				if err := gormDB.First(&team, teamID).Error; err != nil {
+					c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+					return
+				}
+
+				var player models.Player
+				if err := gormDB.Where("steam_id = ?", userSteamID).First(&player).Error; err != nil {
+					c.JSON(http.StatusNotFound, gin.H{"error": "player data not found"})
+					return
+				}
+
+				if err := processPlayerRemoval(&team, &player, gormDB); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+					return
+				}
+
+				c.JSON(http.StatusOK, gin.H{"message": "You left the team", "team": team})
+			})
+
+			// POST /api/teams/:id/kick/:steam_id ДОБАВИТЬ В POSTMAN
+			protected.POST("/:id/kick/:target_steam_id", func(c *gin.Context) {
+				teamID := c.Param("id")
+				targetSteamID := c.Param("target_steam_id")
+				leaderSteamID, _ := c.Get("steam_id")
+
+				var team models.Team
+				gormDB.First(&team, teamID)
+
+				// Проверка прав лидера
+				if team.LeaderSteamID != leaderSteamID.(uint64) {
+					c.JSON(http.StatusForbidden, gin.H{"error": "Only leader can kick players"})
+					return
+				}
+
+				var player models.Player
+				gormDB.Where("steam_id = ?", targetSteamID).First(&player)
+
+				if err := processPlayerRemoval(&team, &player, gormDB); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+					return
+				}
+
+				c.JSON(http.StatusOK, gin.H{"message": "Player kicked", "team": team})
+			})
+
 			protected.POST("", func(c *gin.Context) {
 				var t models.Team
 				if err := c.BindJSON(&t); err != nil {
