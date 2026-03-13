@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: crystack_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "1234" 
+      POSTGRES_DB: crystack
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: crystack_app
+    restart: always
+    ports:
+      - "${PORT}:${PORT}"
+    depends_on:
+      - db
+    environment:
+      DB_URL: ${DB_URL}
+      STEAM_API_KEY: ${STEAM_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      DOMAIN: ${DOMAIN}
+      PORT: ${PORT}
+
+volumes:
+  postgres_data:
