@@ -38,6 +38,9 @@ services:
       VITE_PORT: ${VITE_PORT}
     depends_on:
       - app
+    stdin_open: true 
+    tty: true       
+
 
 volumes:
   postgres_data:

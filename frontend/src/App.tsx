@@ -1,121 +1,63 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import PlayerCard from './components/PlayerCard';
+import { Player } from './types';
 
 function App() {
-  const [count, setCount] = useState(0)
+  // Это наши тестовые данные (имитация того, что придет из Go)
+  const testPlayer: Player = {
+    steam_id: "76561198000000000",
+    name: "Crystacks Developer",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Lucky", // Генератор аватарок
+    role: "Support / Captain",
+    style: "Tactical",
+    heroes: [102, 5, 87], // Chen, CM, Disruptor
+    winrate: 62.3,
+    last_updated: new Date().toISOString(),
+    mmr: 5200,
+    gpm: 410.2,
+    xpm: 550.8,
+    matches_played: 245
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className="min-h-screen bg-[#0b0e14] text-slate-100 font-sans">
+      {/* Навигация (Header) */}
+      <nav className="border-b border-slate-800 bg-[#0f1219] p-4 mb-10">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <h1 className="text-2xl font-black tracking-tighter text-red-500">
+            CRYSTACKS <span className="text-[10px] bg-red-500 text-white px-1 ml-1 rounded">BETA</span>
+          </h1>
+          <div className="flex gap-6 text-sm font-medium text-slate-400">
+            <a href="#" className="hover:text-white transition">Dashboard</a>
+            <a href="#" className="hover:text-white transition">Teams</a>
+            <a href="#" className="hover:text-white transition">Players</a>
+          </div>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      </nav>
 
-      <div className="ticks"></div>
+      {/* Основной контент */}
+      <main className="max-w-6xl mx-auto px-4">
+        <header className="mb-12">
+          <h2 className="text-4xl font-bold mb-2">Обзор профиля</h2>
+          <p className="text-slate-500">Тестовый просмотр данных из локального состояния</p>
+        </header>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Наша карточка (занимает 1 колонку) */}
+          <div className="md:col-span-1">
+            <PlayerCard player={testPlayer} />
+          </div>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+          {/* Заглушка для статистики (занимает 2 колонки) */}
+          <div className="md:col-span-2 bg-slate-900/50 border border-slate-800 rounded-2xl p-8 flex flex-col justify-center items-center border-dashed">
+            <div className="text-slate-600 text-center">
+              <p className="text-lg font-medium">Графики активности появятся здесь</p>
+              <p className="text-sm">Скоро мы подключим TanStack Query для связи с бэкендом</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
 }
 
-export default App
+export default App;
