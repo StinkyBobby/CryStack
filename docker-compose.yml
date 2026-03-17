@@ -29,5 +29,15 @@ services:
       DOMAIN: ${DOMAIN}
       PORT: ${PORT}
 
+  frontend:
+    build: ./frontend
+    container_name: crystack_ui
+    ports:
+      - "${VITE_PORT}:{VITE_PORT}" 
+    environment:
+      - VITE_API_URL: ${VITE_API_URL}
+    depends_on:
+      - app
+
 volumes:
   postgres_data:
