@@ -3,3 +3,5 @@ crystack.exe
 .DS_Store
 *.log
 vendor/
+main
+main.exe
