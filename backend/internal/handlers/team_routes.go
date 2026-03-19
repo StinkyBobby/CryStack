@@ -1,6 +1,7 @@
-package handlers
+﻿package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -37,17 +38,34 @@ func processPlayerRemoval(team *models.Team, player *models.Player, db *gorm.DB)
 	return db.Save(team).Error
 }
 
+func parseUintParam(c *gin.Context, name string) (uint64, bool) {
+	idStr := c.Param(name)
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid " + name})
+		return 0, false
+	}
+	return id, true
+}
+
 func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Config, matchmakingSvc *services.MatchmakingService) {
 	teamRepo := repository.NewTeamRepository(gormDB)
 	sessonRepo := repository.NewSessionRepository(gormDB)
 
 	teams := api.Group("/teams")
 	{
-		teams.GET("/:steam_id", func(c *gin.Context) {
-			idStr := c.Param("steam_id")
-			id, _ := strconv.ParseUint(idStr, 10, 64)
+		teams.GET("/:id", func(c *gin.Context) {
+			id, ok := parseUintParam(c, "id")
+			if !ok {
+				return
+			}
+
 			tm, err := teamRepo.GetByID(id)
 			if err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+					return
+				}
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
@@ -63,13 +81,19 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 			c.JSON(http.StatusOK, all)
 		})
 
-		teams.GET("/:steam_id/matchmaking", func(c *gin.Context) {
-			idStr := c.Param("steam_id")
-			teamID, _ := strconv.ParseUint(idStr, 10, 64)
+		teams.GET("/:id/matchmaking", func(c *gin.Context) {
+			teamID, ok := parseUintParam(c, "id")
+			if !ok {
+				return
+			}
 
 			tm, err := teamRepo.GetByID(teamID)
 			if err != nil {
-				c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+					return
+				}
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
 
@@ -85,14 +109,20 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 		protected := teams.Group("")
 		protected.Use(middleware.AuthMiddleware(cfg, sessonRepo))
 		{
-			// ДОЮАВИТЬ В POSTMAN
 			protected.POST("/:id/leave", func(c *gin.Context) {
-				teamID := c.Param("id")
-				userSteamID, _ := c.Get("steam_id")
+				teamID, ok := parseUintParam(c, "id")
+				if !ok {
+					return
+				}
+				userSteamID := c.GetUint64("steam_id")
 
 				var team models.Team
 				if err := gormDB.First(&team, teamID).Error; err != nil {
 					c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+					return
+				}
+				if team.LeaderSteamID == userSteamID {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "leader cannot leave team"})
 					return
 				}
 
@@ -110,23 +140,33 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 				c.JSON(http.StatusOK, gin.H{"message": "You left the team", "team": team})
 			})
 
-			// POST /api/teams/:id/kick/:steam_id ДОБАВИТЬ В POSTMAN
 			protected.POST("/:id/kick/:target_steam_id", func(c *gin.Context) {
-				teamID := c.Param("id")
-				targetSteamID := c.Param("target_steam_id")
-				leaderSteamID, _ := c.Get("steam_id")
+				teamID, ok := parseUintParam(c, "id")
+				if !ok {
+					return
+				}
+				targetSteamID, ok := parseUintParam(c, "target_steam_id")
+				if !ok {
+					return
+				}
+				leaderSteamID := c.GetUint64("steam_id")
 
 				var team models.Team
-				gormDB.First(&team, teamID)
+				if err := gormDB.First(&team, teamID).Error; err != nil {
+					c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+					return
+				}
 
-				// Проверка прав лидера
-				if team.LeaderSteamID != leaderSteamID.(uint64) {
-					c.JSON(http.StatusForbidden, gin.H{"error": "Only leader can kick players"})
+				if team.LeaderSteamID != leaderSteamID {
+					c.JSON(http.StatusForbidden, gin.H{"error": "only leader can kick players"})
 					return
 				}
 
 				var player models.Player
-				gormDB.Where("steam_id = ?", targetSteamID).First(&player)
+				if err := gormDB.Where("steam_id = ?", targetSteamID).First(&player).Error; err != nil {
+					c.JSON(http.StatusNotFound, gin.H{"error": "player not found"})
+					return
+				}
 
 				if err := processPlayerRemoval(&team, &player, gormDB); err != nil {
 					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -142,6 +182,12 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 					return
 				}
+
+				t.LeaderSteamID = c.GetUint64("steam_id")
+				if len(t.WantedRoles) == 0 {
+					t.IsOpen = true
+				}
+
 				if err := teamRepo.Create(&t); err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 					return
@@ -150,12 +196,22 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 			})
 
 			protected.POST("/:id/matchmaking/auto-invite", func(c *gin.Context) {
-				idStr := c.Param("id")
-				teamID, _ := strconv.ParseUint(idStr, 10, 64)
+				teamID, ok := parseUintParam(c, "id")
+				if !ok {
+					return
+				}
 
-				tm, err := teamRepo.GetByID(uint64(teamID))
+				tm, err := teamRepo.GetByID(teamID)
 				if err != nil {
-					c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+						return
+					}
+					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+					return
+				}
+				if tm.LeaderSteamID != c.GetUint64("steam_id") {
+					c.JSON(http.StatusForbidden, gin.H{"error": "only leader can auto-invite"})
 					return
 				}
 
@@ -186,26 +242,62 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 				})
 			})
 
-			protected.PUT("/:steam_id", func(c *gin.Context) {
-				idStr := c.Param("steam_id")
-				id, _ := strconv.ParseUint(idStr, 10, 64)
+			protected.PUT("/:id", func(c *gin.Context) {
+				teamID, ok := parseUintParam(c, "id")
+				if !ok {
+					return
+				}
+
+				current, err := teamRepo.GetByID(teamID)
+				if err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+						return
+					}
+					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+					return
+				}
+				if current.LeaderSteamID != c.GetUint64("steam_id") {
+					c.JSON(http.StatusForbidden, gin.H{"error": "only leader can update team"})
+					return
+				}
+
 				var t models.Team
 				if err := c.BindJSON(&t); err != nil {
 					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 					return
 				}
-				t.LeaderSteamID = id
-				if err := teamRepo.Update(id, &t); err != nil {
+				t.LeaderSteamID = current.LeaderSteamID
+
+				if err := teamRepo.Update(teamID, &t); err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 					return
 				}
 				c.JSON(http.StatusOK, t)
 			})
 
-			protected.DELETE("/:steam_id", func(c *gin.Context) {
-				idStr := c.Param("steam_id")
-				id, _ := strconv.ParseUint(idStr, 10, 64)
-				if err := teamRepo.DeleteByID(id); err != nil {
+			protected.DELETE("/:id", func(c *gin.Context) {
+				teamID, ok := parseUintParam(c, "id")
+				if !ok {
+					return
+				}
+
+				tm, err := teamRepo.GetByID(teamID)
+				if err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+						return
+					}
+					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+					return
+				}
+
+				if tm.LeaderSteamID != c.GetUint64("steam_id") {
+					c.JSON(http.StatusForbidden, gin.H{"error": "only leader can delete team"})
+					return
+				}
+
+				if err := teamRepo.DeleteByID(teamID); err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 					return
 				}

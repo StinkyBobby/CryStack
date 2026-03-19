@@ -26,20 +26,27 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       DOMAIN: ${DOMAIN}
       PORT: ${PORT}
+      VITE_PORT: ${VITE_PORT}
+      FRONTEND_URL: ${FRONTEND_URL}
+      BACKEND_URL: ${BACKEND_URL}
 
   frontend:
-    build: ./frontend
-    container_name: crystack_ui
-    restart: always
-    ports:
-      - "${VITE_PORT}:${VITE_PORT}" 
-    environment:
-      VITE_API_URL: ${VITE_API_URL}
-      VITE_PORT: ${VITE_PORT}
-    depends_on:
-      - app
-    stdin_open: true 
-    tty: true       
+      build: ./frontend
+      container_name: crystack_ui
+      restart: always
+      ports:
+        - "${VITE_PORT}:${VITE_PORT}" 
+      volumes:
+        - ./frontend:/app             
+        - /app/node_modules           
+      environment:
+        - VITE_API_URL=${VITE_API_URL}
+        - VITE_PORT=${VITE_PORT}
+        - CHOKIDAR_USEPOLLING=true    
+      depends_on:
+        - app
+      stdin_open: true 
+      tty: true    
 
 
 volumes:
