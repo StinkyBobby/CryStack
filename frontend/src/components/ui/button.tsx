@@ -1,9 +1,9 @@
-import * as React from "react";
+﻿import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const variantClasses = {
   default:
-    "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white shadow-lg shadow-fuchsia-900/30 hover:brightness-110",
+    "bg-gradient-to-r from-[#b81823] to-[#df2531] text-white shadow-lg shadow-[#6d0f17]/40 hover:brightness-110",
   ghost: "border border-white/20 bg-white/5 text-white hover:bg-white/10",
 } as const;
 

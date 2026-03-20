@@ -2,7 +2,7 @@ export type HeroesJSON = number[];
 export type RolesJSON = string[];
 
 export interface Player {
-    steam_id: number;
+    steam_id: string;
     name: string;
     avatar: string;
     role: string;
@@ -18,7 +18,7 @@ export interface Player {
 export interface Invite {
     id: number;
     team_id: number;
-    steam_id: number;
+    steam_id: string;
     status: 'pending' | 'accepted' | 'declined';
     created_at: string;
 }
@@ -26,7 +26,7 @@ export interface Invite {
 export interface Team {
     id: number;
     name: string;
-    leader_steam_id: number;
+    leader_steam_id: string;
     current_roles: RolesJSON;
     wanted_roles: RolesJSON;
     description: string;
@@ -35,6 +35,6 @@ export interface Team {
 }
 
 export interface Session {
-    steam_id: number;
+    steam_id: string;
     expires_at: string;
 }

@@ -59,7 +59,7 @@ export function useAuth() {
 
   const loadMe = useCallback(async (activeToken: string) => {
     const me = await apiRequest<MeResponse>("/api/auth/me", { method: "GET", token: activeToken });
-    setPlayer(me.player);
+    setPlayer({ ...me.player, steam_id: String(me.player.steam_id) });
   }, []);
 
   useEffect(() => {

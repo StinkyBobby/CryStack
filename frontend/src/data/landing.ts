@@ -1,1 +1,4 @@
-﻿export const navItems = ["Обзор", "Профиль", "Команды"];
+﻿export const navItems = [
+  { label: "Обзор", path: "/" },
+  { label: "Профиль", path: "/profile" },
+];

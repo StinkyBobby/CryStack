@@ -4,9 +4,9 @@
 
 @layer base {
   :root {
-    --background: 222 84% 5%;
+    --background: 0 0% 0%;
     --foreground: 0 0% 100%;
-    --border: 222 31% 18%;
+    --border: 356 71% 23%;
   }
 
   * {
@@ -20,9 +20,9 @@
     min-height: 100%;
     margin: 0;
     padding: 0;
-    background: #020617;
+    background: #000000;
     color: hsl(var(--foreground));
-    font-family: "Inter", "Segoe UI", sans-serif;
+    font-family: "Open Sans", "Segoe UI", sans-serif;
   }
 
   a {
@@ -35,7 +35,7 @@
   background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
   background-size: 3px 3px;
   mix-blend-mode: soft-light;
-  opacity: 0.18;
+  opacity: 0.14;
   animation: noise-shift 8s steps(8) infinite;
 }
 
@@ -57,18 +57,18 @@
 }
 
 .glow-title {
-  text-shadow: 0 0 32px rgba(255, 255, 255, 0.22), 0 0 70px rgba(167, 139, 250, 0.35);
+  text-shadow: 0 0 26px rgba(255, 255, 255, 0.2), 0 0 68px rgba(223, 37, 49, 0.38);
 }
 
 .antigravity-core {
-  background: radial-gradient(circle, rgba(236, 72, 153, 0.2) 0%, rgba(139, 92, 246, 0.12) 40%, rgba(0, 0, 0, 0) 72%);
+  background: radial-gradient(circle, rgba(223, 37, 49, 0.24) 0%, rgba(223, 37, 49, 0.1) 40%, rgba(0, 0, 0, 0) 72%);
   filter: blur(2px);
   animation: drift-core 9s ease-in-out infinite;
 }
 
 .antigravity-ring {
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(223, 37, 49, 0.32);
   filter: blur(0.2px);
 }
 
@@ -78,7 +78,7 @@
 }
 
 .antigravity-ring-b {
-  border-color: rgba(125, 211, 252, 0.2);
+  border-color: rgba(255, 255, 255, 0.2);
   animation: rotate-ring-b 26s linear infinite;
 }
 

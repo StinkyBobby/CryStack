@@ -5,26 +5,40 @@ import type { Player } from "@/types";
 interface TopNavProps {
   player: Player | null;
   authStatus: "idle" | "loading" | "authenticated" | "anonymous" | "error";
+  currentPath: string;
+  onNavigate: (path: string) => void;
   onLogin: () => void;
   onLogout: () => void;
 }
 
-export function TopNav({ player, authStatus, onLogin, onLogout }: TopNavProps) {
+export function TopNav({ player, authStatus, currentPath, onNavigate, onLogin, onLogout }: TopNavProps) {
   const isAuthenticated = authStatus === "authenticated" && player;
 
   return (
-    <header className="hero-enter rounded-full border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xl sm:px-6">
+    <header className="hero-enter rounded-full border border-white/10 bg-black/45 px-4 py-3 backdrop-blur-xl sm:px-6">
       <div className="flex items-center justify-between gap-4">
-        <div className="line-rise text-base font-semibold tracking-tight sm:text-lg" style={{ animationDelay: "120ms" }}>
+        <button
+          className="line-rise text-base font-semibold tracking-tight sm:text-lg"
+          style={{ animationDelay: "120ms" }}
+          onClick={() => onNavigate("/")}
+        >
           CryStack
-        </div>
+        </button>
 
         <nav className="hidden items-center gap-6 text-sm text-white/70 md:flex">
-          {navItems.map((item, index) => (
-            <a key={item} href="#" className="line-rise transition-colors hover:text-white" style={{ animationDelay: `${160 + index * 80}ms` }}>
-              {item}
-            </a>
-          ))}
+          {navItems.map((item, index) => {
+            const active = currentPath === item.path;
+            return (
+              <button
+                key={item.path}
+                className={`line-rise transition-colors hover:text-white ${active ? "text-[#df2531]" : ""}`}
+                style={{ animationDelay: `${160 + index * 80}ms` }}
+                onClick={() => onNavigate(item.path)}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </nav>
 
         <div className="line-rise flex items-center gap-3" style={{ animationDelay: "360ms" }}>

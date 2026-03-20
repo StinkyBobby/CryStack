@@ -106,7 +106,14 @@ func verifySteamOpenID(c *gin.Context, httpClient *http.Client) bool {
 	return strings.Contains(string(body), "is_valid:true")
 }
 
-func upsertPlayerAndCreateSession(steamID uint64, playerRepo repository.PlayerRepository, sessionRepo repository.SessionRepository, steamSvc *services.SteamService, cfg *config.Config) (string, *models.Player, error) {
+func upsertPlayerAndCreateSession(
+	steamID uint64,
+	playerRepo repository.PlayerRepository,
+	sessionRepo repository.SessionRepository,
+	steamSvc *services.SteamService,
+	httpClient *http.Client,
+	cfg *config.Config,
+) (string, *models.Player, error) {
 	name, avatar, err := steamSvc.GetProfile(steamID)
 	if err != nil {
 		return "", nil, err
@@ -121,6 +128,21 @@ func upsertPlayerAndCreateSession(steamID uint64, playerRepo repository.PlayerRe
 
 	if err := playerRepo.Upsert(player); err != nil {
 		return "", nil, err
+	}
+
+	// Try to enrich player with OpenDota data on login.
+	// If OpenDota is unavailable, keep Steam profile-only login successful.
+	if od, odErr := services.NewOpenDotaService(httpClient).FetchPlayerData(steamID); odErr == nil && od != nil {
+		player.MMR = od.MMR
+		player.GPM = od.GPM
+		player.XPM = od.XPM
+		player.Winrate = od.Winrate
+		player.Role = od.Role
+		player.Style = od.Style
+		player.Heroes = od.Heroes
+		player.MatchesPlayed = od.MatchesPlayed
+		player.LastUpdated = time.Now()
+		_ = playerRepo.Upsert(player)
 	}
 
 	token, err := jwt.GenerateJWT(steamID, cfg.JWTSecret)
@@ -176,7 +198,7 @@ func RegisterAuthRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 				return
 			}
 
-			token, _, err := upsertPlayerAndCreateSession(steamID, playerRepo, sessionRepo, steamSvc, cfg)
+			token, _, err := upsertPlayerAndCreateSession(steamID, playerRepo, sessionRepo, steamSvc, httpClient, cfg)
 			if err != nil {
 				c.Redirect(http.StatusFound, frontendOrigin(cfg)+"/?auth_error=session_create_failed")
 				return
@@ -202,7 +224,7 @@ func RegisterAuthRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 				return
 			}
 
-			token, player, err := upsertPlayerAndCreateSession(steamID, playerRepo, sessionRepo, steamSvc, cfg)
+			token, player, err := upsertPlayerAndCreateSession(steamID, playerRepo, sessionRepo, steamSvc, httpClient, cfg)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "login failed"})
 				return
@@ -211,7 +233,7 @@ func RegisterAuthRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 			c.JSON(http.StatusOK, gin.H{
 				"token": token,
 				"player": gin.H{
-					"steam_id": steamID,
+					"steam_id": fmt.Sprintf("%d", steamID),
 					"name":     player.Name,
 					"avatar":   player.Avatar,
 				},
