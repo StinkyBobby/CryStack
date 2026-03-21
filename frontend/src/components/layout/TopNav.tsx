@@ -13,6 +13,7 @@ interface TopNavProps {
 
 export function TopNav({ player, authStatus, currentPath, onNavigate, onLogin, onLogout }: TopNavProps) {
   const isAuthenticated = authStatus === "authenticated" && player;
+  const isActive = (path: string) => (path === "/" ? currentPath === "/" : currentPath.startsWith(path));
 
   return (
     <header className="hero-enter rounded-full border border-white/10 bg-black/45 px-4 py-3 backdrop-blur-xl sm:px-6">
@@ -27,7 +28,7 @@ export function TopNav({ player, authStatus, currentPath, onNavigate, onLogin, o
 
         <nav className="hidden items-center gap-6 text-sm text-white/70 md:flex">
           {navItems.map((item, index) => {
-            const active = currentPath === item.path;
+            const active = isActive(item.path);
             return (
               <button
                 key={item.path}

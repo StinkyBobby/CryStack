@@ -3,11 +3,12 @@
 interface StatsStripProps {
   playersCount: number;
   openTeams: number;
+  liveMatches: number;
   status: "idle" | "loading" | "success" | "error";
   error: string | null;
 }
 
-export function StatsStrip({ playersCount, openTeams, status, error }: StatsStripProps) {
+export function StatsStrip({ playersCount, openTeams, liveMatches, status, error }: StatsStripProps) {
   return (
     <section
       className="hero-enter grid gap-3 rounded-3xl border border-red-900/45 bg-black/60 p-4 backdrop-blur-md sm:grid-cols-3 sm:p-6"
@@ -33,10 +34,10 @@ export function StatsStrip({ playersCount, openTeams, status, error }: StatsStri
 
       <div className="rounded-2xl border border-red-900/45 bg-white/[0.03] p-4">
         <div className="line-rise text-2xl font-semibold tracking-tight" style={{ animationDelay: "740ms" }}>
-          {status === "error" ? "Ошибка" : status === "loading" ? "Sync" : "Live"}
+          {status === "loading" ? "..." : <CountUp to={liveMatches} />}
         </div>
         <p className="line-rise mt-1 text-sm text-white/70" style={{ animationDelay: "800ms" }}>
-          {status === "error" ? error || "не удалось загрузить данные" : "данные подтягиваются с backend API"}
+          {status === "error" ? error || "не удалось загрузить данные" : "pro матчей за последние ~2 часа"}
         </p>
       </div>
     </section>

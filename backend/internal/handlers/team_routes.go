@@ -54,6 +54,15 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 
 	teams := api.Group("/teams")
 	{
+		teams.GET("/all", func(c *gin.Context) {
+			all := []models.Team{}
+			if err := gormDB.Order("created_at desc").Find(&all).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, all)
+		})
+
 		teams.GET("/:id", func(c *gin.Context) {
 			id, ok := parseUintParam(c, "id")
 			if !ok {
@@ -109,6 +118,18 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 		protected := teams.Group("")
 		protected.Use(middleware.AuthMiddleware(cfg, sessonRepo))
 		{
+			protected.GET("/mine", func(c *gin.Context) {
+				leaderID := c.GetUint64("steam_id")
+				myTeams := []models.Team{}
+
+				if err := gormDB.Where("leader_steam_id = ?", leaderID).Order("created_at desc").Find(&myTeams).Error; err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch teams"})
+					return
+				}
+
+				c.JSON(http.StatusOK, myTeams)
+			})
+
 			protected.POST("/:id/leave", func(c *gin.Context) {
 				teamID, ok := parseUintParam(c, "id")
 				if !ok {
@@ -267,13 +288,22 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 					return
 				}
+				t.ID = current.ID
 				t.LeaderSteamID = current.LeaderSteamID
+				t.CreatedAt = current.CreatedAt
 
 				if err := teamRepo.Update(teamID, &t); err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 					return
 				}
-				c.JSON(http.StatusOK, t)
+
+				updated, err := teamRepo.GetByID(teamID)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+					return
+				}
+
+				c.JSON(http.StatusOK, updated)
 			})
 
 			protected.DELETE("/:id", func(c *gin.Context) {

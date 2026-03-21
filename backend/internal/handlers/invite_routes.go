@@ -18,6 +18,58 @@ func RegisterInviteRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 	invites := api.Group("/invites")
 	invites.Use(middleware.AuthMiddleware(cfg, sessionRepo))
 	{
+		invites.POST("", func(c *gin.Context) {
+			callerSteamID := c.GetUint64("steam_id")
+			var body struct {
+				TeamID  uint64 `json:"team_id"`
+				SteamID uint64 `json:"steam_id"`
+			}
+
+			if err := c.BindJSON(&body); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+				return
+			}
+			if body.TeamID == 0 || body.SteamID == 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "team_id and steam_id are required"})
+				return
+			}
+
+			var team models.Team
+			if err := gormDB.First(&team, body.TeamID).Error; err != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+				return
+			}
+			if team.LeaderSteamID != callerSteamID {
+				c.JSON(http.StatusForbidden, gin.H{"error": "only leader can send invites"})
+				return
+			}
+
+			var player models.Player
+			if err := gormDB.Where("steam_id = ?", body.SteamID).First(&player).Error; err != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "player not found"})
+				return
+			}
+
+			var existing models.Invite
+			if err := gormDB.Where("team_id = ? AND steam_id = ? AND status = ?", body.TeamID, body.SteamID, "pending").First(&existing).Error; err == nil {
+				c.JSON(http.StatusConflict, gin.H{"error": "pending invite already exists"})
+				return
+			}
+
+			invite := models.Invite{
+				TeamID:  body.TeamID,
+				SteamID: body.SteamID,
+				Status:  "pending",
+			}
+
+			if err := gormDB.Create(&invite).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create invite"})
+				return
+			}
+
+			c.JSON(http.StatusCreated, invite)
+		})
+
 		invites.GET("/my", func(c *gin.Context) {
 			steamID := c.GetUint64("steam_id")
 			myInvites := []models.Invite{}
@@ -109,15 +161,24 @@ func RegisterInviteRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 						newWanted = append(newWanted, r)
 					}
 				}
-
-				if !roleFound {
-					c.JSON(http.StatusBadRequest, gin.H{"error": "player role is not requested by team"})
-					return
+				if !roleFound && player.Role != "" {
+					exists := false
+					for _, current := range team.CurrentRoles {
+						if current == player.Role {
+							exists = true
+							break
+						}
+					}
+					if !exists {
+						team.CurrentRoles = append(team.CurrentRoles, player.Role)
+					}
 				}
 
 				team.WantedRoles = newWanted
 				if len(team.WantedRoles) == 0 {
 					team.IsOpen = false
+				} else {
+					team.IsOpen = true
 				}
 
 				tx := gormDB.Begin()

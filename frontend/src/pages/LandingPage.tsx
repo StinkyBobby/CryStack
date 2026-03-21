@@ -47,7 +47,13 @@ export function LandingPage({ currentPath, onNavigate, player, authStatus, authE
           topWantedRole={metrics.topWantedRole}
           status={status}
         />
-        <StatsStrip playersCount={metrics.playersCount} openTeams={metrics.openTeams} status={status} error={error} />
+        <StatsStrip
+          playersCount={metrics.playersCount}
+          openTeams={metrics.openTeams}
+          liveMatches={metrics.liveMatches}
+          status={status}
+          error={error}
+        />
       </main>
     </div>
   );

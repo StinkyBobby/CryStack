@@ -89,7 +89,7 @@ export function useProfileData(player: Player | null, token: string | null) {
 
         const [fullPlayerRaw, teamsRaw, heroesRaw, recentMatchesRaw, invitesRaw] = await Promise.all([
           apiRequest<Player>(`/api/players/${player.steam_id}`),
-          apiRequest<Team[]>("/api/teams"),
+          token ? apiRequest<Team[]>("/api/teams/mine", { token }) : Promise.resolve([] as Team[]),
           fetch("https://api.opendota.com/api/heroes").then((r) => r.json() as Promise<OpenDotaHero[]>),
           fetch(`https://api.opendota.com/api/players/${toSteamID32(player.steam_id)}/recentMatches`).then((r) =>
             r.json() as Promise<OpenDotaMatch[]>,
@@ -112,7 +112,7 @@ export function useProfileData(player: Player | null, token: string | null) {
           return acc;
         }, {});
 
-        const teamsLed = teams.filter((team) => team.leader_steam_id === fullPlayer.steam_id);
+        const teamsLed = teams.filter((team) => String(team.leader_steam_id) === fullPlayer.steam_id);
 
         setData({
           player: fullPlayer,

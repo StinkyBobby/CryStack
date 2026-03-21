@@ -1,0 +1,36 @@
+INSERT INTO players (
+  steam_id,
+  name,
+  avatar,
+  role,
+  style,
+  heroes,
+  winrate,
+  last_updated,
+  mmr,
+  gpm,
+  xpm,
+  matches_played
+) VALUES
+  (76561198000100001, 'ArcPulse', 'https://api.dicebear.com/9.x/thumbs/svg?seed=ArcPulse', 'carry', 'High Risk', '[1, 93, 109]', 52.4, NOW(), 6120, 702.5, 655.3, 1843),
+  (76561198000100002, 'LaneOracle', 'https://api.dicebear.com/9.x/thumbs/svg?seed=LaneOracle', 'midlane', 'Tempo', '[74, 76, 13]', 55.1, NOW(), 6480, 689.1, 701.4, 2037),
+  (76561198000100003, 'IronAnchor', 'https://api.dicebear.com/9.x/thumbs/svg?seed=IronAnchor', 'offlane', 'Team Player', '[99, 29, 104]', 50.8, NOW(), 5710, 590.7, 603.8, 1672),
+  (76561198000100004, 'MistHarbor', 'https://api.dicebear.com/9.x/thumbs/svg?seed=MistHarbor', 'support', 'Vision Control', '[5, 50, 111]', 53.6, NOW(), 5240, 421.3, 488.6, 2211),
+  (76561198000100005, 'LastGlyph', 'https://api.dicebear.com/9.x/thumbs/svg?seed=LastGlyph', 'hard_support', 'Shot Caller', '[27, 31, 137]', 56.2, NOW(), 5380, 377.2, 452.4, 2498),
+  (76561198000100006, 'RiftCourier', 'https://api.dicebear.com/9.x/thumbs/svg?seed=RiftCourier', 'carry', 'Farmer', '[73, 89, 114]', 49.9, NOW(), 5890, 731.8, 621.2, 1564),
+  (76561198000100007, 'EchoDraft', 'https://api.dicebear.com/9.x/thumbs/svg?seed=EchoDraft', 'midlane', 'Snowball', '[19, 67, 145]', 54.7, NOW(), 6335, 676.5, 718.9, 1916),
+  (76561198000100008, 'StoneRelay', 'https://api.dicebear.com/9.x/thumbs/svg?seed=StoneRelay', 'offlane', 'Initiator', '[38, 97, 135]', 51.3, NOW(), 5620, 548.9, 590.5, 1738),
+  (76561198000100009, 'WardSignal', 'https://api.dicebear.com/9.x/thumbs/svg?seed=WardSignal', 'support', 'Utility', '[43, 65, 100]', 57.0, NOW(), 5465, 409.8, 476.1, 2322),
+  (76561198000100010, 'NightSocket', 'https://api.dicebear.com/9.x/thumbs/svg?seed=NightSocket', 'hard_support', 'Defensive', '[20, 16, 91]', 52.9, NOW(), 5185, 365.4, 441.7, 2089)
+ON CONFLICT (steam_id) DO UPDATE SET
+  name = EXCLUDED.name,
+  avatar = EXCLUDED.avatar,
+  role = EXCLUDED.role,
+  style = EXCLUDED.style,
+  heroes = EXCLUDED.heroes,
+  winrate = EXCLUDED.winrate,
+  last_updated = EXCLUDED.last_updated,
+  mmr = EXCLUDED.mmr,
+  gpm = EXCLUDED.gpm,
+  xpm = EXCLUDED.xpm,
+  matches_played = EXCLUDED.matches_played;
