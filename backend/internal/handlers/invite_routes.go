@@ -1,6 +1,9 @@
 ﻿package handlers
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -12,6 +15,28 @@ import (
 	"gorm.io/gorm"
 )
 
+type flexibleUint64 uint64
+
+func (v *flexibleUint64) UnmarshalJSON(data []byte) error {
+	var asString string
+	if err := json.Unmarshal(data, &asString); err == nil {
+		parsed, parseErr := strconv.ParseUint(asString, 10, 64)
+		if parseErr != nil {
+			return parseErr
+		}
+		*v = flexibleUint64(parsed)
+		return nil
+	}
+
+	var asNumber uint64
+	if err := json.Unmarshal(data, &asNumber); err == nil {
+		*v = flexibleUint64(asNumber)
+		return nil
+	}
+
+	return errors.New("invalid uint64 value")
+}
+
 func RegisterInviteRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Config) {
 	sessionRepo := repository.NewSessionRepository(gormDB)
 
@@ -21,15 +46,15 @@ func RegisterInviteRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 		invites.POST("", func(c *gin.Context) {
 			callerSteamID := c.GetUint64("steam_id")
 			var body struct {
-				TeamID  uint64 `json:"team_id"`
-				SteamID uint64 `json:"steam_id"`
+				TeamID  uint64         `json:"team_id"`
+				SteamID flexibleUint64 `json:"steam_id"`
 			}
 
 			if err := c.BindJSON(&body); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 				return
 			}
-			if body.TeamID == 0 || body.SteamID == 0 {
+			if body.TeamID == 0 || uint64(body.SteamID) == 0 {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "team_id and steam_id are required"})
 				return
 			}
@@ -45,20 +70,21 @@ func RegisterInviteRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 			}
 
 			var player models.Player
-			if err := gormDB.Where("steam_id = ?", body.SteamID).First(&player).Error; err != nil {
+			if err := gormDB.Where("steam_id = ?", uint64(body.SteamID)).First(&player).Error; err != nil {
+				fmt.Print(err)
 				c.JSON(http.StatusNotFound, gin.H{"error": "player not found"})
 				return
 			}
 
 			var existing models.Invite
-			if err := gormDB.Where("team_id = ? AND steam_id = ? AND status = ?", body.TeamID, body.SteamID, "pending").First(&existing).Error; err == nil {
+			if err := gormDB.Where("team_id = ? AND steam_id = ? AND status = ?", body.TeamID, uint64(body.SteamID), "pending").First(&existing).Error; err == nil {
 				c.JSON(http.StatusConflict, gin.H{"error": "pending invite already exists"})
 				return
 			}
 
 			invite := models.Invite{
 				TeamID:  body.TeamID,
-				SteamID: body.SteamID,
+				SteamID: uint64(body.SteamID),
 				Status:  "pending",
 			}
 

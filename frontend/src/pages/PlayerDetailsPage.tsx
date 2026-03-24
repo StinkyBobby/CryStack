@@ -149,7 +149,7 @@ export function PlayerDetailsPage({ steamId, currentPath, onNavigate, player, to
         token,
         body: {
           team_id: Number(selectedTeamId),
-          steam_id: Number(target.steam_id),
+          steam_id: target.steam_id,
         },
       });
       setInviteStatus("success");

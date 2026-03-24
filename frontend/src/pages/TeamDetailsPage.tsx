@@ -202,7 +202,7 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
         token,
         body: {
           team_id: team.id,
-          steam_id: Number(inviteSteamId),
+          steam_id: inviteSteamId,
         },
       });
       setInviteStatus("success");
