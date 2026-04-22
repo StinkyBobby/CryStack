@@ -61,10 +61,14 @@ export function useDashboardData() {
 
   const metrics = useMemo(() => {
     const openTeams = data.teams.filter((team) => team.is_open).length;
-    const avgMmr =
-      data.players.length > 0
-        ? Math.round(data.players.reduce((sum, player) => sum + player.mmr, 0) / data.players.length)
+    const playersWithStats = data.players.filter((player) => (player.matches_played || 0) > 0).length;
+    const avgWinrate =
+      playersWithStats > 0
+        ? data.players
+            .filter((player) => (player.matches_played || 0) > 0)
+            .reduce((sum, player) => sum + (player.winrate || 0), 0) / playersWithStats
         : 0;
+    const openSlots = data.teams.reduce((sum, team) => sum + (Array.isArray(team.wanted_roles) ? team.wanted_roles.length : 0), 0);
 
     const roleDemand = new Map<string, number>();
     data.teams.forEach((team) => {
@@ -80,7 +84,9 @@ export function useDashboardData() {
     return {
       playersCount: data.players.length,
       openTeams,
-      avgMmr,
+      avgWinrate,
+      playersWithStats,
+      openSlots,
       topWantedRole,
       liveMatches,
     };

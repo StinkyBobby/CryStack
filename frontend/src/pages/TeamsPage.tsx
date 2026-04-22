@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
+import { apiRequest } from "@/api/client";
 import { AnimatedBackdrop } from "@/components/background/AnimatedBackdrop";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ type TeamSort = "newest" | "wanted_desc" | "name";
 export function TeamsPage({ currentPath, onNavigate, player, token, authStatus, onLogin, onLogout }: TeamsPageProps) {
   const { teams, status, error, createTeam, loadMyTeams } = useTeamsOverview();
   const [myTeams, setMyTeams] = useState<Team[]>([]);
+  const [leaderNames, setLeaderNames] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [wantedRoleFilter, setWantedRoleFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<TeamSort>("newest");
@@ -58,6 +60,36 @@ export function TeamsPage({ currentPath, onNavigate, player, token, authStatus, 
     };
   }, [token, loadMyTeams]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadLeaderNames = async () => {
+      try {
+        const players = await apiRequest<Player[]>("/api/players");
+        if (cancelled) {
+          return;
+        }
+
+        const map = (Array.isArray(players) ? players : []).reduce<Record<string, string>>((acc, p) => {
+          acc[String(p.steam_id)] = p.name;
+          return acc;
+        }, {});
+
+        setLeaderNames(map);
+      } catch {
+        if (!cancelled) {
+          setLeaderNames({});
+        }
+      }
+    };
+
+    loadLeaderNames();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const canCreate = useMemo(() => {
     return !!token && name.trim().length >= 3 && wantedRoles.length > 0;
   }, [token, name, wantedRoles]);
@@ -68,9 +100,11 @@ export function TeamsPage({ currentPath, onNavigate, player, token, authStatus, 
         return true;
       }
       const query = search.toLowerCase();
+      const leaderName = (leaderNames[String(team.leader_steam_id)] || "").toLowerCase();
       return (
         team.name.toLowerCase().includes(query) ||
         (team.description || "").toLowerCase().includes(query) ||
+        leaderName.includes(query) ||
         String(team.leader_steam_id).includes(query)
       );
     });
@@ -91,7 +125,7 @@ export function TeamsPage({ currentPath, onNavigate, player, token, authStatus, 
       }
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [teams, search, wantedRoleFilter, sortBy]);
+  }, [teams, search, wantedRoleFilter, sortBy, leaderNames]);
 
   const toggleWantedRole = (role: string) => {
     setWantedRoles((prev) => (prev.includes(role) ? prev.filter((x) => x !== role) : [...prev, role]));
@@ -245,7 +279,7 @@ export function TeamsPage({ currentPath, onNavigate, player, token, authStatus, 
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск по названию, описанию, SteamID лидера"
+              placeholder="Поиск по названию, описанию, нику или SteamID лидера"
               className="h-11 rounded-xl border border-red-900/45 bg-white/[0.03] px-4 outline-none sm:col-span-2"
             />
 
@@ -289,7 +323,7 @@ export function TeamsPage({ currentPath, onNavigate, player, token, authStatus, 
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-xl font-semibold">{team.name}</p>
-                  <p className="text-sm text-white/70">Лидер: {team.leader_steam_id}</p>
+                  <p className="text-sm text-white/70">Лидер: {leaderNames[String(team.leader_steam_id)] || team.leader_steam_id}</p>
                   <p className="text-sm text-white/60">{team.description || "Без описания"}</p>
                 </div>
                 <div className="text-right text-sm text-white/80">

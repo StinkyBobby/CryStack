@@ -23,10 +23,16 @@ interface HeroStat {
 interface ProPlayer {
   account_id: number;
   name?: string;
+  personaname?: string;
   team_name?: string;
   wins?: number;
   losses?: number;
   last_match_time?: number;
+}
+
+interface PlayerWL {
+  win: number;
+  lose: number;
 }
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -37,6 +43,7 @@ export function useAnalyticsData() {
   const [matches, setMatches] = useState<ProMatch[]>([]);
   const [heroStats, setHeroStats] = useState<HeroStat[]>([]);
   const [proPlayers, setProPlayers] = useState<ProPlayer[]>([]);
+  const [proPlayersWL, setProPlayersWL] = useState<Record<number, PlayerWL>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -55,9 +62,51 @@ export function useAnalyticsData() {
           return;
         }
 
+        const normalizedPros = Array.isArray(proPlayersPayload)
+          ? proPlayersPayload.filter((p) => Number.isFinite(p.account_id) && p.account_id > 0)
+          : [];
+
+        const wlTargets = normalizedPros
+          .filter((p) => {
+            const name = (p.name || p.personaname || "").trim();
+            return name.length > 0;
+          })
+          .slice(0, 16);
+
+        const wlEntries = await Promise.all(
+          wlTargets.map(async (p) => {
+            try {
+              const wl = await fetch(`https://api.opendota.com/api/players/${p.account_id}/wl`).then(
+                (r) => r.json() as Promise<Partial<PlayerWL>>,
+              );
+              const wins = Number(wl.win || 0);
+              const losses = Number(wl.lose || 0);
+              if (wins + losses <= 0) {
+                return [p.account_id, null] as const;
+              }
+
+              return [p.account_id, { win: wins, lose: losses }] as const;
+            } catch {
+              return [p.account_id, null] as const;
+            }
+          }),
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        const wlMap: Record<number, PlayerWL> = {};
+        wlEntries.forEach(([accountID, wl]) => {
+          if (wl) {
+            wlMap[accountID] = wl;
+          }
+        });
+
         setMatches(Array.isArray(matchesPayload) ? matchesPayload : []);
         setHeroStats(Array.isArray(heroesPayload) ? heroesPayload : []);
-        setProPlayers(Array.isArray(proPlayersPayload) ? proPlayersPayload : []);
+        setProPlayers(normalizedPros);
+        setProPlayersWL(wlMap);
         setStatus("success");
       } catch (e) {
         if (cancelled) {
@@ -104,19 +153,24 @@ export function useAnalyticsData() {
       }));
 
     const hotPros = [...proPlayers]
-      .filter((p) => !!p.name)
-      .sort((a, b) => ((b.wins || 0) - (b.losses || 0)) - ((a.wins || 0) - (a.losses || 0)))
-      .slice(0, 8)
       .map((p) => {
-        const games = (p.wins || 0) + (p.losses || 0);
+        const wl = proPlayersWL[p.account_id];
+        const wins = wl?.win ?? p.wins ?? 0;
+        const losses = wl?.lose ?? p.losses ?? 0;
+        const games = wins + losses;
+        const name = (p.name || p.personaname || "").trim();
+
         return {
           accountID: p.account_id,
-          name: p.name || `Pro #${p.account_id}`,
+          name: name || `Pro #${p.account_id}`,
           team: p.team_name || "Free Agent",
           games,
-          winrate: games > 0 ? ((p.wins || 0) / games) * 100 : 0,
+          winrate: games > 0 ? (wins / games) * 100 : 0,
         };
-      });
+      })
+      .filter((p) => p.games > 0)
+      .sort((a, b) => b.games - a.games || b.winrate - a.winrate)
+      .slice(0, 8);
 
     const insights = [
       totalProMatches > 0 ? `Tracked ${totalProMatches} recent pro matches.` : "No pro matches in sample.",
@@ -135,7 +189,7 @@ export function useAnalyticsData() {
       hotPros,
       insights,
     };
-  }, [heroStats, matches, proPlayers]);
+  }, [heroStats, matches, proPlayers, proPlayersWL]);
 
   return { status, error, matches, heroStats, proPlayers, computed };
 }

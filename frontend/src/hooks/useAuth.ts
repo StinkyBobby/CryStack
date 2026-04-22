@@ -88,7 +88,8 @@ export function useAuth() {
         setToken(null);
         setPlayer(null);
         setStatus("anonymous");
-        setError(e instanceof Error ? e.message : "failed to restore session");
+        // Silent restore failure: stale/expired local token should not show noisy errors on landing.
+        setError(null);
       }
     };
 

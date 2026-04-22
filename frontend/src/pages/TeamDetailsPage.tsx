@@ -34,6 +34,7 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
   const [team, setTeam] = useState<Team | null>(null);
   const [leader, setLeader] = useState<Player | null>(null);
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
+  const [members, setMembers] = useState<Player[]>([]);
   const [candidates, setCandidates] = useState<MatchCandidate[]>([]);
 
   const [editName, setEditName] = useState("");
@@ -46,6 +47,9 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
   const [inviteSteamId, setInviteSteamId] = useState("");
   const [inviteStatus, setInviteStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [autoInviteStatus, setAutoInviteStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [autoInviteError, setAutoInviteError] = useState<string | null>(null);
+  const [autoInviteSummary, setAutoInviteSummary] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,10 +59,10 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
       setError(null);
 
       try {
-        const [teamPayload, playersPayload, candidatesPayload] = await Promise.all([
+        const [teamPayload, playersPayload, membersPayload] = await Promise.all([
           apiRequest<Team>(`/api/teams/${teamId}`),
           apiRequest<Player[]>("/api/players"),
-          apiRequest<MatchCandidate[]>(`/api/teams/${teamId}/matchmaking`),
+          apiRequest<Player[]>(`/api/teams/${teamId}/members`),
         ]);
 
         if (cancelled) {
@@ -71,12 +75,28 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
           heroes: Array.isArray(p.heroes) ? p.heroes : [],
         }));
 
+        const normalizedMembers = (Array.isArray(membersPayload) ? membersPayload : []).map((p) => ({
+          ...p,
+          steam_id: String(p.steam_id),
+          heroes: Array.isArray(p.heroes) ? p.heroes : [],
+        }));
+
         const normalizedTeam: Team = {
           ...teamPayload,
           leader_steam_id: String(teamPayload.leader_steam_id),
           current_roles: Array.isArray(teamPayload.current_roles) ? teamPayload.current_roles : [],
           wanted_roles: Array.isArray(teamPayload.wanted_roles) ? teamPayload.wanted_roles : [],
         };
+
+        const sortedMembers = [...normalizedMembers].sort((a, b) => {
+          if (a.steam_id === normalizedTeam.leader_steam_id) {
+            return -1;
+          }
+          if (b.steam_id === normalizedTeam.leader_steam_id) {
+            return 1;
+          }
+          return a.name.localeCompare(b.name);
+        });
 
         setTeam(normalizedTeam);
         setEditName(normalizedTeam.name || "");
@@ -85,16 +105,11 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
 
         setAllPlayers(normalizedPlayers);
         setLeader(normalizedPlayers.find((p) => p.steam_id === String(normalizedTeam.leader_steam_id)) ?? null);
-        setCandidates(
-          (Array.isArray(candidatesPayload) ? candidatesPayload : []).map((c) => ({
-            ...c,
-            player: {
-              ...c.player,
-              steam_id: String(c.player.steam_id),
-              heroes: Array.isArray(c.player.heroes) ? c.player.heroes : [],
-            },
-          })),
-        );
+        setMembers(sortedMembers);
+        setCandidates([]);
+        setAutoInviteStatus("idle");
+        setAutoInviteError(null);
+        setAutoInviteSummary(null);
         setStatus("success");
       } catch (e) {
         if (cancelled) {
@@ -214,6 +229,80 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
     }
   };
 
+  const runAutoInvite = async () => {
+    if (!token || !team || !isOwner) {
+      return;
+    }
+
+    const openSlots = teamRoles.wanted.length;
+    if (openSlots <= 0) {
+      setAutoInviteStatus("idle");
+      setAutoInviteError(null);
+      setAutoInviteSummary("У команды нет открытых ролей для автоподбора.");
+      setCandidates([]);
+      return;
+    }
+
+    setAutoInviteStatus("loading");
+    setAutoInviteError(null);
+    setAutoInviteSummary(null);
+
+    try {
+      const payload = await apiRequest<MatchCandidate[]>(`/api/teams/${team.id}/matchmaking`, { method: "GET" });
+      const normalizedCandidates = (Array.isArray(payload) ? payload : []).map((candidate) => ({
+        ...candidate,
+        player: {
+          ...candidate.player,
+          steam_id: String(candidate.player.steam_id),
+          heroes: Array.isArray(candidate.player.heroes) ? candidate.player.heroes : [],
+        },
+      }));
+
+      const seen = new Set<string>();
+      const uniqueCandidates = normalizedCandidates.filter((candidate) => {
+        const steamId = candidate.player.steam_id;
+        if (!steamId || seen.has(steamId)) {
+          return false;
+        }
+        seen.add(steamId);
+        return true;
+      });
+
+      const selected = uniqueCandidates.slice(0, openSlots);
+      const inviteResults = await Promise.all(
+        selected.map(async (candidate) => {
+          try {
+            await apiRequest("/api/invites", {
+              method: "POST",
+              token,
+              body: {
+                team_id: team.id,
+                steam_id: candidate.player.steam_id,
+              },
+            });
+            return true;
+          } catch {
+            return false;
+          }
+        }),
+      );
+
+      const invitesSent = inviteResults.filter(Boolean).length;
+      const invitesFailed = inviteResults.length - invitesSent;
+
+      setCandidates(uniqueCandidates);
+      setAutoInviteStatus("success");
+      setAutoInviteSummary(
+        `Выбрано кандидатов: ${selected.length}/${openSlots}. Отправлено инвайтов: ${invitesSent}${
+          invitesFailed > 0 ? `, ошибок: ${invitesFailed}` : ""
+        }.`,
+      );
+    } catch (e) {
+      setAutoInviteStatus("error");
+      setAutoInviteError(e instanceof Error ? e.message : "failed to run auto-invite");
+    }
+  };
+
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[#020617] text-white">
       <AnimatedBackdrop />
@@ -256,7 +345,7 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
         </section>
 
         {team ? (
-          <section className="hero-enter grid gap-4 lg:grid-cols-2" style={{ animationDelay: "120ms" }}>
+          <section className={`hero-enter grid gap-4 ${isOwner ? "lg:grid-cols-2" : ""}`} style={{ animationDelay: "120ms" }}>
             <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5">
               <h2 className="text-xl font-semibold">Состав по ролям</h2>
               <div className="mt-4">
@@ -290,38 +379,77 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
               </div>
             </div>
 
-            <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5">
-              <h2 className="text-xl font-semibold">Автоподбор кандидатов</h2>
-              <p className="mt-1 text-sm text-white/70">Рекомендации из /api/teams/:id/matchmaking.</p>
+            {isOwner ? (
+              <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5">
+                <h2 className="text-xl font-semibold">Автоподбор кандидатов</h2>
+                <p className="mt-1 text-sm text-white/70">Подбирает лучших игроков по ролям и отправляет инвайты строго по числу открытых ролей.</p>
 
-              <div className="mt-4 space-y-2">
-                {candidates.length > 0 ? (
-                  candidates.map((candidate) => (
-                    <div key={candidate.player.steam_id} className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2 text-sm">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                          <img src={candidate.player.avatar} alt={candidate.player.name} className="h-8 w-8 rounded-full object-cover" />
-                          <span>{candidate.player.name}</span>
+                <div className="mt-3">
+                  <Button onClick={runAutoInvite} disabled={!token || autoInviteStatus === "loading" || teamRoles.wanted.length === 0}>
+                    {autoInviteStatus === "loading" ? "Подбор..." : "Запустить автоподбор и автоинвайт"}
+                  </Button>
+                  {teamRoles.wanted.length === 0 ? <p className="mt-2 text-xs text-white/60">У команды нет открытых ролей для подбора.</p> : null}
+                  {autoInviteStatus === "success" && autoInviteSummary ? <p className="mt-2 text-sm text-emerald-300">{autoInviteSummary}</p> : null}
+                  {autoInviteStatus === "error" ? <p className="mt-2 text-sm text-rose-200">Ошибка: {autoInviteError}</p> : null}
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {candidates.length > 0 ? (
+                    candidates.map((candidate) => (
+                      <div key={candidate.player.steam_id} className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <img src={candidate.player.avatar} alt={candidate.player.name} className="h-8 w-8 rounded-full object-cover" />
+                            <span>{candidate.player.name}</span>
+                          </div>
+                          <span>
+                            score: <CountUp to={Math.round(candidate.score * 100)} suffix="%" />
+                          </span>
                         </div>
-                        <span>
-                          score: <CountUp to={Math.round(candidate.score * 100)} suffix="%" />
-                        </span>
+                        <div className="mt-1 text-xs text-white/70">
+                          role: {candidate.player.role || "unknown"} | MMR diff: <CountUp to={candidate.mmr_diff || 0} />
+                        </div>
                       </div>
-                      <div className="mt-1 text-xs text-white/70">
-                        role: {candidate.player.role || "unknown"} | MMR diff: <CountUp to={candidate.mmr_diff || 0} />
+                    ))
+                  ) : (
+                    <p className="text-sm text-white/70">Нажмите кнопку, чтобы получить кандидатов и отправить инвайты.</p>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {team ? (
+          <section className="hero-enter rounded-3xl border border-red-900/45 bg-black/60 p-5" style={{ animationDelay: "160ms" }}>
+            <h2 className="text-xl font-semibold">Участники команды</h2>
+            <p className="mt-1 text-sm text-white/70">Лидер и игроки, принявшие приглашение.</p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {members.length > 0 ? (
+                members.map((member) => (
+                  <div key={member.steam_id} className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <img src={member.avatar} alt={member.name} className="h-9 w-9 rounded-full object-cover" />
+                      <div>
+                        <p className="text-sm font-medium text-white">{member.name}</p>
+                        <p className="text-xs text-white/70">{member.role || "unknown role"}</p>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-white/70">Кандидаты не найдены для текущих требований команды.</p>
-                )}
-              </div>
+                    <p className="mt-2 text-xs text-white/70">
+                      {String(member.steam_id) === String(team.leader_steam_id) ? "Лидер команды" : "Участник"}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-white/70">Пока нет подтвержденных участников.</p>
+              )}
             </div>
           </section>
         ) : null}
 
         {team && isOwner ? (
-          <section className="hero-enter grid gap-4 lg:grid-cols-2" style={{ animationDelay: "190ms" }}>
+          <section className="hero-enter grid gap-4 lg:grid-cols-2" style={{ animationDelay: "210ms" }}>
             <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5">
               <h2 className="text-xl font-semibold">Управление командой</h2>
               <div className="mt-3 grid gap-3">

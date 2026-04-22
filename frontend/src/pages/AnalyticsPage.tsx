@@ -76,17 +76,21 @@ export function AnalyticsPage({ currentPath, onNavigate, player, authStatus, onL
           <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5">
             <h2 className="text-xl font-semibold">Hot pro players</h2>
             <div className="mt-4 space-y-2 text-sm">
-              {computed.hotPros.map((pro) => (
-                <div key={pro.accountID} className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    <span>{pro.name}</span>
-                    <span>{pro.team}</span>
+              {computed.hotPros.length > 0 ? (
+                computed.hotPros.map((pro) => (
+                  <div key={pro.accountID} className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <span>{pro.name}</span>
+                      <span>{pro.team}</span>
+                    </div>
+                    <p className="text-xs text-white/70">
+                      games: <CountUp to={pro.games} /> | winrate: <CountUp to={Math.round(pro.winrate * 10)} scale={10} suffix="%" />
+                    </p>
                   </div>
-                  <p className="text-xs text-white/70">
-                    games: <CountUp to={pro.games} /> | winrate: <CountUp to={Math.round(pro.winrate * 10)} scale={10} suffix="%" />
-                  </p>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-white/70">Нет актуальных данных по про-игрокам.</p>
+              )}
             </div>
           </div>
 

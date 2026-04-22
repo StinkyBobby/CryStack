@@ -21,7 +21,17 @@ INSERT INTO players (
   (76561198000100007, 'EchoDraft', 'https://api.dicebear.com/9.x/thumbs/svg?seed=EchoDraft', 'midlane', 'Snowball', '[19, 67, 145]', 54.7, NOW(), 6335, 676.5, 718.9, 1916),
   (76561198000100008, 'StoneRelay', 'https://api.dicebear.com/9.x/thumbs/svg?seed=StoneRelay', 'offlane', 'Initiator', '[38, 97, 135]', 51.3, NOW(), 5620, 548.9, 590.5, 1738),
   (76561198000100009, 'WardSignal', 'https://api.dicebear.com/9.x/thumbs/svg?seed=WardSignal', 'support', 'Utility', '[43, 65, 100]', 57.0, NOW(), 5465, 409.8, 476.1, 2322),
-  (76561198000100010, 'NightSocket', 'https://api.dicebear.com/9.x/thumbs/svg?seed=NightSocket', 'hard_support', 'Defensive', '[20, 16, 91]', 52.9, NOW(), 5185, 365.4, 441.7, 2089)
+  (76561198000100010, 'NightSocket', 'https://api.dicebear.com/9.x/thumbs/svg?seed=NightSocket', 'hard_support', 'Defensive', '[20, 16, 91]', 52.9, NOW(), 5185, 365.4, 441.7, 2089),
+  (76561198000100011, 'FrostRelay', 'https://api.dicebear.com/9.x/thumbs/svg?seed=FrostRelay', 'carry', 'Late Game', '[95, 113, 41]', 53.4, NOW(), 6210, 714.2, 668.9, 2124),
+  (76561198000100012, 'RunePilot', 'https://api.dicebear.com/9.x/thumbs/svg?seed=RunePilot', 'midlane', 'Tempo', '[8, 86, 74]', 54.6, NOW(), 6395, 683.7, 712.1, 1978),
+  (76561198000100013, 'GrimVanguard', 'https://api.dicebear.com/9.x/thumbs/svg?seed=GrimVanguard', 'offlane', 'Frontliner', '[2, 98, 120]', 50.3, NOW(), 5755, 562.4, 598.2, 1685),
+  (76561198000100014, 'AuraWarden', 'https://api.dicebear.com/9.x/thumbs/svg?seed=AuraWarden', 'support', 'Vision Control', '[50, 111, 123]', 55.8, NOW(), 5415, 426.6, 491.3, 2406),
+  (76561198000100015, 'EchoLantern', 'https://api.dicebear.com/9.x/thumbs/svg?seed=EchoLantern', 'hard_support', 'Shot Caller', '[27, 53, 81]', 56.4, NOW(), 5335, 371.8, 447.9, 2287),
+  (76561198000100016, 'BladeCurrent', 'https://api.dicebear.com/9.x/thumbs/svg?seed=BladeCurrent', 'carry', 'Farmer', '[93, 73, 48]', 51.7, NOW(), 6030, 726.1, 632.8, 1811),
+  (76561198000100017, 'StormLedger', 'https://api.dicebear.com/9.x/thumbs/svg?seed=StormLedger', 'midlane', 'Snowball', '[76, 67, 19]', 55.2, NOW(), 6460, 691.3, 724.6, 2061),
+  (76561198000100018, 'IronBeacon', 'https://api.dicebear.com/9.x/thumbs/svg?seed=IronBeacon', 'offlane', 'Initiator', '[3, 38, 99]', 50.9, NOW(), 5685, 554.7, 604.5, 1766),
+  (76561198000100019, 'SafeGlyph', 'https://api.dicebear.com/9.x/thumbs/svg?seed=SafeGlyph', 'support', 'Utility', '[43, 65, 5]', 57.3, NOW(), 5490, 414.2, 482.6, 2519),
+  (76561198000100020, 'DawnSocket', 'https://api.dicebear.com/9.x/thumbs/svg?seed=DawnSocket', 'hard_support', 'Defensive', '[16, 20, 100]', 53.1, NOW(), 5220, 368.9, 444.3, 2194)
 ON CONFLICT (steam_id) DO UPDATE SET
   name = EXCLUDED.name,
   avatar = EXCLUDED.avatar,

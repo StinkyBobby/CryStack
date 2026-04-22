@@ -1,4 +1,4 @@
-﻿package handlers
+package handlers
 
 import (
 	"errors"
@@ -113,6 +113,49 @@ func RegisterTeamRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Confi
 			}
 
 			c.JSON(http.StatusOK, res)
+		})
+
+		teams.GET("/:id/members", func(c *gin.Context) {
+			teamID, ok := parseUintParam(c, "id")
+			if !ok {
+				return
+			}
+
+			var team models.Team
+			if err := gormDB.First(&team, teamID).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+					return
+				}
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+
+			acceptedInvites := []models.Invite{}
+			if err := gormDB.Where("team_id = ? AND status = ?", teamID, "accepted").Find(&acceptedInvites).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch team members"})
+				return
+			}
+
+			steamIDs := []uint64{team.LeaderSteamID}
+			seen := map[uint64]struct{}{
+				team.LeaderSteamID: {},
+			}
+			for _, inv := range acceptedInvites {
+				if _, exists := seen[inv.SteamID]; exists {
+					continue
+				}
+				seen[inv.SteamID] = struct{}{}
+				steamIDs = append(steamIDs, inv.SteamID)
+			}
+
+			members := []models.Player{}
+			if err := gormDB.Where("steam_id IN ?", steamIDs).Find(&members).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch players"})
+				return
+			}
+
+			c.JSON(http.StatusOK, members)
 		})
 
 		protected := teams.Group("")

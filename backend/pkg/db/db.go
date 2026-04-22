@@ -24,15 +24,15 @@ func New(cfg *config.Config) (*gorm.DB, error) {
 			sqlDB, err := db.DB()
 			if err == nil {
 				if err := sqlDB.Ping(); err == nil {
-					log.Printf("Успешное подключение к БД (попытка %d)", i)
+					log.Printf("Database connected successfully (attempt: %d)", i)
 					return db, nil
 				}
 			}
 		}
 
-		log.Printf("БД пока недоступна (попытка %d/%d). Ждем %v...", i, maxRetries, retryDelay)
+		log.Printf("Database is unavailable (attempt %d/%d). Waiting for %v...", i, maxRetries, retryDelay)
 		time.Sleep(retryDelay)
 	}
 
-	return nil, fmt.Errorf("не удалось подключиться к БД после %d попыток: %w", maxRetries, err)
+	return nil, fmt.Errorf("unable connect database for %d attempts: %w", maxRetries, err)
 }

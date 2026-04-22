@@ -43,13 +43,13 @@ export function LandingPage({ currentPath, onNavigate, player, authStatus, authE
         <FeaturesSection
           playersCount={metrics.playersCount}
           openTeams={metrics.openTeams}
-          avgMmr={metrics.avgMmr}
+          avgWinrate={metrics.avgWinrate}
           topWantedRole={metrics.topWantedRole}
           status={status}
         />
         <StatsStrip
-          playersCount={metrics.playersCount}
-          openTeams={metrics.openTeams}
+          openSlots={metrics.openSlots}
+          playersWithStats={metrics.playersWithStats}
           liveMatches={metrics.liveMatches}
           status={status}
           error={error}

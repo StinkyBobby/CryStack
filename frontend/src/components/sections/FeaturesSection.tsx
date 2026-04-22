@@ -5,7 +5,7 @@ import { CountUp } from "@/components/ui/CountUp";
 interface FeaturesSectionProps {
   playersCount: number;
   openTeams: number;
-  avgMmr: number;
+  avgWinrate: number;
   topWantedRole: string;
   status: "idle" | "loading" | "success" | "error";
 }
@@ -22,8 +22,8 @@ const metricCards = [
     icon: UsersRound,
   },
   {
-    key: "mmr",
-    title: "Средний MMR",
+    key: "winrate",
+    title: "Средний винрейт",
     icon: Sigma,
   },
   {
@@ -33,7 +33,7 @@ const metricCards = [
   },
 ] as const;
 
-export function FeaturesSection({ playersCount, openTeams, avgMmr, topWantedRole, status }: FeaturesSectionProps) {
+export function FeaturesSection({ playersCount, openTeams, avgWinrate, topWantedRole, status }: FeaturesSectionProps) {
   return (
     <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {metricCards.map((card, index) => {
@@ -56,8 +56,8 @@ export function FeaturesSection({ playersCount, openTeams, avgMmr, topWantedRole
                     <CountUp to={playersCount} />
                   ) : card.key === "teams" ? (
                     <CountUp to={openTeams} />
-                  ) : card.key === "mmr" ? (
-                    <CountUp to={avgMmr} />
+                  ) : card.key === "winrate" ? (
+                    <CountUp to={Math.round(avgWinrate * 10)} scale={10} suffix="%" />
                   ) : (
                     topWantedRole
                   )}

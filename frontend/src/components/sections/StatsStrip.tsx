@@ -1,14 +1,14 @@
 ﻿import { CountUp } from "@/components/ui/CountUp";
 
 interface StatsStripProps {
-  playersCount: number;
-  openTeams: number;
+  openSlots: number;
+  playersWithStats: number;
   liveMatches: number;
   status: "idle" | "loading" | "success" | "error";
   error: string | null;
 }
 
-export function StatsStrip({ playersCount, openTeams, liveMatches, status, error }: StatsStripProps) {
+export function StatsStrip({ openSlots, playersWithStats, liveMatches, status, error }: StatsStripProps) {
   return (
     <section
       className="hero-enter grid gap-3 rounded-3xl border border-red-900/45 bg-black/60 p-4 backdrop-blur-md sm:grid-cols-3 sm:p-6"
@@ -16,19 +16,19 @@ export function StatsStrip({ playersCount, openTeams, liveMatches, status, error
     >
       <div className="rounded-2xl border border-red-900/45 bg-white/[0.03] p-4">
         <div className="line-rise text-2xl font-semibold tracking-tight" style={{ animationDelay: "500ms" }}>
-          <CountUp to={playersCount} />
+          <CountUp to={openSlots} />
         </div>
         <p className="line-rise mt-1 text-sm text-white/70" style={{ animationDelay: "560ms" }}>
-          зарегистрированных игроков
+          открытых слотов в командах
         </p>
       </div>
 
       <div className="rounded-2xl border border-red-900/45 bg-white/[0.03] p-4">
         <div className="line-rise text-2xl font-semibold tracking-tight" style={{ animationDelay: "620ms" }}>
-          <CountUp to={openTeams} />
+          <CountUp to={playersWithStats} />
         </div>
         <p className="line-rise mt-1 text-sm text-white/70" style={{ animationDelay: "680ms" }}>
-          команд сейчас открыто
+          профилей с загруженной статистикой
         </p>
       </div>
 
