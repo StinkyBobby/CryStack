@@ -8,8 +8,8 @@ import (
 
 	"github.com/StinkyBobby/CryStack/internal/models"
 	"github.com/StinkyBobby/CryStack/internal/repository"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -98,123 +98,123 @@ func TestPlayerRepositoryImpl_GetBySteamID(t *testing.T) {
 	})
 }
 
-func  TestPlayerRepositoryImpl_Create(t *testing.T) {
-    repo, db, cleanup := setupPostgresContainer(t)
-    defer cleanup()
+func TestPlayerRepositoryImpl_Create(t *testing.T) {
+	repo, db, cleanup := setupPostgresContainer(t)
+	defer cleanup()
 
-    t.Run("Creates new player", func(t *testing.T) {
-        player := &models.Player{
-            SteamID: 1234567890,
-            Name:    "New Player",
-            Role:    "midlane",
-        }
+	t.Run("Creates new player", func(t *testing.T) {
+		player := &models.Player{
+			SteamID: 1234567890,
+			Name:    "New Player",
+			Role:    "midlane",
+		}
 
-        err := repo.Create(player)
-        require.NoError(t, err)
+		err := repo.Create(player)
+		require.NoError(t, err)
 
-        var fromDB models.Player
-        err = db.Where("steam_id = ?", player.SteamID).First(&fromDB).Error
-        require.NoError(t, err)
+		var fromDB models.Player
+		err = db.Where("steam_id = ?", player.SteamID).First(&fromDB).Error
+		require.NoError(t, err)
 
-        assert.Equal(t, player.SteamID, fromDB.SteamID)
-        assert.Equal(t, player.Name, fromDB.Name)
-        assert.Equal(t, player.Role, fromDB.Role)
-    })
+		assert.Equal(t, player.SteamID, fromDB.SteamID)
+		assert.Equal(t, player.Name, fromDB.Name)
+		assert.Equal(t, player.Role, fromDB.Role)
+	})
 
-    t.Run("Returns error on duplicate steam_id", func(t *testing.T) {
-        first := &models.Player {
-            SteamID: 222333444,
-            Name:    "First",
-        }
-        require.NoError(t, repo.Create(first))
-        second := &models.Player {
-            SteamID: 222333444,
-            Name:    "Second",
-        }
-        err := repo.Create(second)
+	t.Run("Returns error on duplicate steam_id", func(t *testing.T) {
+		first := &models.Player{
+			SteamID: 222333444,
+			Name:    "First",
+		}
+		require.NoError(t, repo.Create(first))
+		second := &models.Player{
+			SteamID: 222333444,
+			Name:    "Second",
+		}
+		err := repo.Create(second)
 
-        assert.Error(t, err)
-    })
+		assert.Error(t, err)
+	})
 }
 
 func TestPlayerRepositoryImpl_GetAll(t *testing.T) {
-    repo, _, cleanup := setupPostgresContainer(t)
-    defer cleanup()
+	repo, _, cleanup := setupPostgresContainer(t)
+	defer cleanup()
 
-    t.Run("Returns all players", func(t *testing.T) {
-        p1 := &models.Player{SteamID: 1001, Name: "p1", Role: "carry"}
-        p2 := &models.Player{SteamID: 1002, Name: "p2", Role: "midlane"}
-        p3 := &models.Player{SteamID: 1003, Name: "p3", Role: "support"}
+	t.Run("Returns all players", func(t *testing.T) {
+		p1 := &models.Player{SteamID: 1001, Name: "p1", Role: "carry"}
+		p2 := &models.Player{SteamID: 1002, Name: "p2", Role: "midlane"}
+		p3 := &models.Player{SteamID: 1003, Name: "p3", Role: "support"}
 
-        require.NoError(t, repo.Create(p1))
-        require.NoError(t, repo.Create(p2))
-        require.NoError(t, repo.Create(p3))
+		require.NoError(t, repo.Create(p1))
+		require.NoError(t, repo.Create(p2))
+		require.NoError(t, repo.Create(p3))
 
-        all, err := repo.GetAll()
-        require.NoError(t, err)
-        require.Len(t, all, 3)
+		all, err := repo.GetAll()
+		require.NoError(t, err)
+		require.Len(t, all, 3)
 
-        bySteamID := make(map[uint64]*models.Player, len(all))
-        for _, p := range all {
-            bySteamID[p.SteamID] = p
-        }
+		bySteamID := make(map[uint64]*models.Player, len(all))
+		for _, p := range all {
+			bySteamID[p.SteamID] = p
+		}
 
-        assert.Contains(t, bySteamID, uint64(1001))
-        assert.Contains(t, bySteamID, uint64(1002))
-        assert.Contains(t, bySteamID, uint64(1003))
-        assert.Equal(t, "p1", bySteamID[1001].Name)
-        assert.Equal(t, "p2", bySteamID[1002].Name)
-        assert.Equal(t, "p3", bySteamID[1003].Name)
-    })
+		assert.Contains(t, bySteamID, uint64(1001))
+		assert.Contains(t, bySteamID, uint64(1002))
+		assert.Contains(t, bySteamID, uint64(1003))
+		assert.Equal(t, "p1", bySteamID[1001].Name)
+		assert.Equal(t, "p2", bySteamID[1002].Name)
+		assert.Equal(t, "p3", bySteamID[1003].Name)
+	})
 }
 
 func TestPlayerRepositoryImpl_Upsert(t *testing.T) {
-    repo, db, cleanup := setupPostgresContainer(t)
-    defer cleanup()
+	repo, db, cleanup := setupPostgresContainer(t)
+	defer cleanup()
 
-    t.Run("inserts player when steam_id does not exists", func(t *testing.T){
-        player := &models.Player{
-            SteamID: 777001,
-            Name:    "Insert Case",
-            Role:    "carry",
-            MMR:     4200,
-        }
+	t.Run("inserts player when steam_id does not exists", func(t *testing.T) {
+		player := &models.Player{
+			SteamID: 777001,
+			Name:    "Insert Case",
+			Role:    "carry",
+			MMR:     4200,
+		}
 
-        err := repo.Upsert(player)
-        require.NoError(t, err)
+		err := repo.Upsert(player)
+		require.NoError(t, err)
 
-        var fromDB models.Player
-        err = db.Where("steam_id = ?", player.SteamID).First(&fromDB).Error
-        require.NoError(t, err)
+		var fromDB models.Player
+		err = db.Where("steam_id = ?", player.SteamID).First(&fromDB).Error
+		require.NoError(t, err)
 
-        assert.Equal(t, player.SteamID, fromDB.SteamID)
-        assert.Equal(t, player.Name, fromDB.Name)
-        assert.Equal(t, player.Role, fromDB.Role)
-        assert.Equal(t, player.MMR, fromDB.MMR)
-    })
+		assert.Equal(t, player.SteamID, fromDB.SteamID)
+		assert.Equal(t, player.Name, fromDB.Name)
+		assert.Equal(t, player.Role, fromDB.Role)
+		assert.Equal(t, player.MMR, fromDB.MMR)
+	})
 
-    t.Run("updates existing player when steam_id is already exists", func(t *testing.T) {
-        seed := &models.Player {
-            SteamID: 777002,
-            Name:    "Before Update",
-            Role:    "support",
-            MMR:     3000,
-        }
-        require.NoError(t, repo.Create(seed))
+	t.Run("updates existing player when steam_id is already exists", func(t *testing.T) {
+		seed := &models.Player{
+			SteamID: 777002,
+			Name:    "Before Update",
+			Role:    "support",
+			MMR:     3000,
+		}
+		require.NoError(t, repo.Create(seed))
 
-        update := &models.Player {
-            SteamID: 777002,
-            Name:    "After Update",
-            Role:    "midlane",
-            MMR:     5100,
-        }
+		update := &models.Player{
+			SteamID: 777002,
+			Name:    "After Update",
+			Role:    "midlane",
+			MMR:     5100,
+		}
 
-        err := repo.Upsert(update)
-        require.NoError(t, err)
+		err := repo.Upsert(update)
+		require.NoError(t, err)
 
-        var fromDB models.Player
-        err = db.Where("steam_id = ?", 777002).First(&fromDB).Error
-        require.NoError(t, err)
+		var fromDB models.Player
+		err = db.Where("steam_id = ?", 777002).First(&fromDB).Error
+		require.NoError(t, err)
 
 		assert.Equal(t, uint64(777002), fromDB.SteamID)
 		assert.Equal(t, "After Update", fromDB.Name)
@@ -222,8 +222,8 @@ func TestPlayerRepositoryImpl_Upsert(t *testing.T) {
 		assert.Equal(t, 5100, fromDB.MMR)
 
 		var count int64
-			err = db.Model(&models.Player{}).Where("steam_id = ?", 777002).Count(&count).Error
-            require.NoError(t, err)
-            assert.Equal(t, int64(1), count)
-    })
+		err = db.Model(&models.Player{}).Where("steam_id = ?", 777002).Count(&count).Error
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), count)
+	})
 }
