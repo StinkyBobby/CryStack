@@ -73,6 +73,16 @@ func TestTeamRepositoryImpl_Create(t *testing.T) {
 		assert.Equal(t, team.Name, fromDB.Name)
 		assert.Equal(t, team.Description, fromDB.Description)
 	})
+
+	t.Run("Creating team with existing ID should return error", func(t *testing.T) {
+		dublicate := &models.Team{
+			ID:          1,
+			Name:        "New Dublicate",
+			Description: "Some description for dublicate",
+		}
+		err := repo.Create(dublicate)
+		assert.Error(t, err)
+	})
 }
 
 func TestTeamRepositoryImpl_GetByID(t *testing.T) {
@@ -99,7 +109,7 @@ func TestTeamRepositoryImpl_GetByID(t *testing.T) {
 
 	t.Run("Get non-existing team should return not found", func(t *testing.T) {
 		got, err := repo.GetByID(123)
-		assert.NotNil(t, got)
+		assert.Nil(t, got)
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, gorm.ErrRecordNotFound))
 	})
@@ -122,9 +132,11 @@ func TestTeamRepositoryImpl_GetOpenTeams(t *testing.T) {
 			Name:        "New Team 2",
 			Description: "Some description",
 		}
-		err := repo.Create(t2)
+		require.NoError(t, repo.Create(t2))
 
-		assert.Error(t, err)
+		teams, err := repo.GetOpenTeams()
+		assert.NoError(t, err)
+		assert.Len(t, teams, 2)
 	})
 }
 
@@ -154,8 +166,8 @@ func TestTeamRepositoryImpl_Update(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, uint64(1), fromDB.ID)
-		assert.Equal(t, team.Name, fromDB.Name)
-		assert.Equal(t, team.Description, fromDB.Description)
+		assert.Equal(t, update.Name, fromDB.Name)
+		assert.Equal(t, update.Description, fromDB.Description)
 	})
 }
 
