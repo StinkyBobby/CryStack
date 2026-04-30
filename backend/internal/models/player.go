@@ -31,7 +31,7 @@ func (hj *HeroesJSON) Scan(value interface{}) error {
 }
 
 type Player struct {
-	SteamID       uint64     `json:"steam_id" gorm:"primaryKey;column:steam_id;not null"`
+	SteamID       uint64     `json:"steam_id,string" gorm:"primaryKey;column:steam_id;not null"`
 	Name          string     `json:"name" gorm:"column:name;size:64;not null"`
 	Avatar        string     `json:"avatar" gorm:"column:avatar"`
 	Role          string     `json:"role" gorm:"column:role;size:20"`

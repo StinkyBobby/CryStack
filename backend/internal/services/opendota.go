@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/StinkyBobby/CryStack/internal/models"
@@ -25,6 +26,90 @@ var heroRoles = map[int]string{
 	5: "Support", 20: "Support", 26: "Support",
 }
 
+type openDotaProfileResponse struct {
+	MmrEstimate struct {
+		Estimate *int `json:"estimate"`
+	} `json:"mmr_estimate"`
+	Profile struct {
+		Name   string `json:"personaname"`
+		Avatar string `json:"avatarmedium"`
+	} `json:"profile"`
+	RankTier            *int    `json:"rank_tier"`
+	LeaderboardRank     *int    `json:"leaderboard_rank"`
+	CompetitiveRank     *string `json:"competitive_rank"`
+	SoloCompetitiveRank *string `json:"solo_competitive_rank"`
+}
+
+func parseRankValue(rank *string) int {
+	if rank == nil || *rank == "" {
+		return 0
+	}
+	value, err := strconv.Atoi(*rank)
+	if err != nil {
+		return 0
+	}
+	return value
+}
+
+func estimateMMRFromRankTier(rankTier int) int {
+	if rankTier <= 0 {
+		return 0
+	}
+
+	medal := rankTier / 10
+	star := rankTier % 10
+	if star < 1 {
+		star = 1
+	}
+	if star > 5 {
+		star = 5
+	}
+
+	baseByMedal := map[int]int{
+		1: 0,
+		2: 770,
+		3: 1540,
+		4: 2310,
+		5: 3080,
+		6: 3850,
+		7: 4620,
+		8: 5420,
+	}
+
+	base, ok := baseByMedal[medal]
+	if !ok {
+		return 0
+	}
+
+	return base + (star-1)*154 + 77
+}
+
+func resolveMMR(profileData *openDotaProfileResponse) int {
+	if profileData.MmrEstimate.Estimate != nil && *profileData.MmrEstimate.Estimate > 0 {
+		return *profileData.MmrEstimate.Estimate
+	}
+
+	if profileData.RankTier != nil && *profileData.RankTier > 0 {
+		if mmr := estimateMMRFromRankTier(*profileData.RankTier); mmr > 0 {
+			return mmr
+		}
+	}
+
+	if mmr := parseRankValue(profileData.CompetitiveRank); mmr > 0 {
+		return mmr
+	}
+
+	if mmr := parseRankValue(profileData.SoloCompetitiveRank); mmr > 0 {
+		return mmr
+	}
+
+	if profileData.LeaderboardRank != nil && *profileData.LeaderboardRank > 0 {
+		return 7000
+	}
+
+	return 0
+}
+
 func (s *OpenDotaService) FetchPlayerData(steamID uint64) (*models.Player, error) {
 	// 1. Конвертация ID
 	steamID32 := steamID
@@ -41,16 +126,10 @@ func (s *OpenDotaService) FetchPlayerData(steamID uint64) (*models.Player, error
 	}
 	defer resp.Body.Close()
 
-	var profileData struct {
-		MmrEstimate struct {
-			Estimate int `json:"estimate"`
-		} `json:"mmr_estimate"`
-		Profile struct {
-			Name   string `json:"personaname"`
-			Avatar string `json:"avatarmedium"`
-		} `json:"profile"`
+	var profileData openDotaProfileResponse
+	if err := json.NewDecoder(resp.Body).Decode(&profileData); err != nil {
+		return nil, err
 	}
-	json.NewDecoder(resp.Body).Decode(&profileData)
 
 	// 3. Последние матчи
 	mResp, err := s.httpClient.Get(baseUrl + "/recentMatches")
@@ -89,12 +168,12 @@ func (s *OpenDotaService) FetchPlayerData(steamID uint64) (*models.Player, error
 		}
 	}
 
-	avgK := float64(sumK) / float64(len(matches))
-	avgD := float64(sumD) / float64(len(matches))
-	avgA := float64(sumA) / float64(len(matches))
-
+	avgK, avgD, avgA := 0.0, 0.0, 0.0
 	avgGpm, avgXpm := 0.0, 0.0
 	if len(matches) > 0 {
+		avgK = float64(sumK) / float64(len(matches))
+		avgD = float64(sumD) / float64(len(matches))
+		avgA = float64(sumA) / float64(len(matches))
 		avgGpm = float64(sumGpm) / float64(len(matches))
 		avgXpm = float64(sumXpm) / float64(len(matches))
 	}
@@ -154,7 +233,7 @@ func (s *OpenDotaService) FetchPlayerData(steamID uint64) (*models.Player, error
 		SteamID:       steamID,
 		Name:          profileData.Profile.Name,
 		Avatar:        profileData.Profile.Avatar,
-		MMR:           profileData.MmrEstimate.Estimate,
+		MMR:           resolveMMR(&profileData),
 		Winrate:       winrate,
 		GPM:           avgGpm,
 		XPM:           avgXpm,

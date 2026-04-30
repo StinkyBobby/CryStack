@@ -1,6 +1,7 @@
-package main
+﻿package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -13,6 +14,31 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
+
+func buildCorsConfig(cfg *config.Config) cors.Config {
+	allowOrigins := make([]string, 0, 2)
+	if cfg.FrontendURL != "" {
+		allowOrigins = append(allowOrigins, cfg.FrontendURL)
+	}
+	if cfg.Domain != "" && cfg.VitePort != "" {
+		allowOrigins = append(allowOrigins, fmt.Sprintf("http://%s:%s", cfg.Domain, cfg.VitePort))
+	}
+
+	corsCfg := cors.Config{
+		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Content-Length", "Accept", "Authorization"},
+		ExposeHeaders: []string{"Content-Length"},
+		MaxAge:       12 * time.Hour,
+	}
+
+	if len(allowOrigins) == 0 {
+		corsCfg.AllowAllOrigins = true
+	} else {
+		corsCfg.AllowOrigins = allowOrigins
+	}
+
+	return corsCfg
+}
 
 func main() {
 	cfg := config.Load()
@@ -37,10 +63,7 @@ func main() {
 	}
 
 	r := gin.Default()
-	r.Use(cors.Default())
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
-	r.Use(cors.Default())
+	r.Use(cors.New(buildCorsConfig(cfg)))
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong", "db": "ok"})
