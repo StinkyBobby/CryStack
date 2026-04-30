@@ -1,5 +1,45 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 
+const CDN_ROOT = "https://cdn.jsdelivr.net/gh/odota/api@latest/data";
+
+async function fetchWithTimeout<T>(url: string, timeout = 3000): Promise<T> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const resp = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return (await resp.json()) as T;
+  } catch {
+    // fallback to CDN snapshot for main resources
+    if (url.startsWith("https://api.opendota.com/api/")) {
+      const name = url.split("/").pop()!;
+      const cdnUrl = `${CDN_ROOT}/${name}.json`;
+      const cdnResp = await fetch(cdnUrl);
+      if (!cdnResp.ok) throw new Error(`CDN fallback failed ${cdnResp.status}`);
+      return (await cdnResp.json()) as T;
+    }
+    throw new Error("Network timeout and no CDN fallback");
+  }
+}
+
+async function fetchPlayerWL(accountId: number): Promise<PlayerWL | null> {
+  const key = `wl_${accountId}`;
+  const cached = localStorage.getItem(key);
+  if (cached) {
+    const { ts, data } = JSON.parse(cached) as { ts: number; data: PlayerWL };
+    if (Date.now() - ts < 10 * 60 * 1000) return data;
+  }
+  try {
+    const wl = await fetch(`https://api.opendota.com/api/players/${accountId}/wl`).then(r => r.json());
+    const result = { win: Number(wl.win || 0), lose: Number(wl.lose || 0) };
+    localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data: result }));
+    return result;
+  } catch {
+    return null;
+  }
+}
+
 interface ProMatch {
   match_id: number;
   leagueid: number;
@@ -53,9 +93,9 @@ export function useAnalyticsData() {
       setError(null);
       try {
         const [matchesPayload, heroesPayload, proPlayersPayload] = await Promise.all([
-          fetch("https://api.opendota.com/api/proMatches").then((r) => r.json() as Promise<ProMatch[]>),
-          fetch("https://api.opendota.com/api/heroStats").then((r) => r.json() as Promise<HeroStat[]>),
-          fetch("https://api.opendota.com/api/proPlayers").then((r) => r.json() as Promise<ProPlayer[]>),
+          fetchWithTimeout<ProMatch[]>("https://api.opendota.com/api/proMatches"),
+          fetchWithTimeout<HeroStat[]>("https://api.opendota.com/api/heroStats"),
+          fetchWithTimeout<ProPlayer[]>("https://api.opendota.com/api/proPlayers"),
         ]);
 
         if (cancelled) {
@@ -76,9 +116,10 @@ export function useAnalyticsData() {
         const wlEntries = await Promise.all(
           wlTargets.map(async (p) => {
             try {
-              const wl = await fetch(`https://api.opendota.com/api/players/${p.account_id}/wl`).then(
-                (r) => r.json() as Promise<Partial<PlayerWL>>,
-              );
+              const wl = await fetchPlayerWL(p.account_id);
+              if (!wl) {
+                return [p.account_id, null] as const;
+              }
               const wins = Number(wl.win || 0);
               const losses = Number(wl.lose || 0);
               if (wins + losses <= 0) {
