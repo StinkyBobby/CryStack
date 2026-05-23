@@ -2,6 +2,7 @@
 import { apiRequest } from "@/api/client";
 import { AnimatedBackdrop } from "@/components/background/AnimatedBackdrop";
 import { TopNav } from "@/components/layout/TopNav";
+import { Footer } from "@/components/layout/Footer";
 import { CountUp } from "@/components/ui/CountUp";
 import { useProfileData } from "@/hooks/useProfileData";
 import type { Invite, Player } from "@/types";
@@ -70,10 +71,11 @@ export function ProfilePage({ currentPath, onNavigate, player, token, authStatus
             onLogout={onLogout}
           />
           <section className="hero-enter rounded-3xl border border-red-900/50 bg-black/60 p-8 text-center">
-            <h2 className="text-2xl font-semibold">Profile unavailable</h2>
-            <p className="mt-3 text-white/75">Login via Steam to load your profile data.</p>
+            <h2 className="text-2xl font-semibold">Профиль недоступен</h2>
+            <p className="mt-3 text-white/75">Войдите через Steam для загрузки данных профиля.</p>
           </section>
         </main>
+        <Footer />
       </div>
     );
   }
@@ -111,33 +113,33 @@ export function ProfilePage({ currentPath, onNavigate, player, token, authStatus
                   Steam ID: {profile.steam_id}
                 </p>
                 <p className="line-rise mt-1 text-sm text-white/70" style={{ animationDelay: "170ms" }}>
-                  Sync status: {status === "loading" ? "Updating..." : "Up to date"}
+                  Синхронизация: {status === "loading" ? "Обновление..." : "Актуально"}
                 </p>
               </div>
             </div>
             <div className="text-sm text-white/70">
               <p>
-                Teams led: <CountUp to={data.teamsLed.length} />
+                Лидер команд: <CountUp to={data.teamsLed.length} />
               </p>
               <p>
-                Pending invites: <CountUp to={pendingInvites.length} />
+                Ожидают ответа: <CountUp to={pendingInvites.length} />
               </p>
             </div>
           </div>
         </section>
 
         <section className="hero-enter grid gap-4 sm:grid-cols-2 lg:grid-cols-5" style={{ animationDelay: "120ms" }}>
-          <MetricCard title="Current MMR" value={<CountUp to={mmr} />} />
-          <MetricCard title="Main role" value={profile.role || "n/a"} />
-          <MetricCard title="Winrate" value={<CountUp to={Math.round(winrate * 10)} scale={10} suffix="%" />} />
+          <MetricCard title="Текущий MMR" value={<CountUp to={mmr} />} />
+          <MetricCard title="Основная роль" value={profile.role || "н/д"} />
+          <MetricCard title="Винрейт" value={<CountUp to={Math.round(winrate * 10)} scale={10} suffix="%" />} />
           <MetricCard title="GPM" value={<CountUp to={Math.round(gpm)} />} />
           <MetricCard title="XPM" value={<CountUp to={Math.round(xpm)} />} />
         </section>
 
         <section className="hero-enter grid gap-4 lg:grid-cols-3" style={{ animationDelay: "180ms" }}>
           <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5 lg:col-span-2">
-            <h3 className="text-lg font-semibold">Recent form</h3>
-            <p className="text-sm text-white/70">Performance trend (K+A-D) in recent matches.</p>
+            <h3 className="text-lg font-semibold">Форма последних матчей</h3>
+            <p className="text-sm text-white/70">Динамика показателя (K+A-D) в последних матчах.</p>
 
             {matchTrend.length > 1 ? (
               <svg viewBox="0 0 600 180" className="mt-4 h-44 w-full">
@@ -156,23 +158,23 @@ export function ProfilePage({ currentPath, onNavigate, player, token, authStatus
                 />
               </svg>
             ) : (
-              <p className="mt-4 text-sm text-white/70">Not enough matches to render chart.</p>
+              <p className="mt-4 text-sm text-white/70">Недостаточно матчей для отображения графика.</p>
             )}
           </div>
 
           <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5">
-            <h3 className="text-lg font-semibold">Core stats</h3>
+            <h3 className="text-lg font-semibold">Основные показатели</h3>
             <div className="mt-4 space-y-3 text-sm">
-              <Row label="Matches" value={<CountUp to={matchesPlayed} />} />
-              <Row label="Style" value={profile.style || "n/a"} />
-              <Row label="Winrate" value={<CountUp to={Math.round(winrate * 10)} scale={10} suffix="%" />} />
+              <Row label="Матчей" value={<CountUp to={matchesPlayed} />} />
+              <Row label="Стиль" value={profile.style || "н/д"} />
+              <Row label="Винрейт" value={<CountUp to={Math.round(winrate * 10)} scale={10} suffix="%" />} />
             </div>
           </div>
         </section>
 
         <section className="hero-enter grid gap-4 lg:grid-cols-3" style={{ animationDelay: "240ms" }}>
           <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5 lg:col-span-1">
-            <h3 className="text-lg font-semibold">Top heroes</h3>
+            <h3 className="text-lg font-semibold">Лучшие герои</h3>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
               {heroes.length > 0 ? (
                 heroes.map((heroID) => (
@@ -181,20 +183,20 @@ export function ProfilePage({ currentPath, onNavigate, player, token, authStatus
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-white/70">Hero list is empty.</p>
+                <p className="text-sm text-white/70">Список героев пуст.</p>
               )}
             </div>
           </div>
 
           <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5 lg:col-span-2">
-            <h3 className="text-lg font-semibold">Incoming invites</h3>
+            <h3 className="text-lg font-semibold">Входящие приглашения</h3>
             <div className="mt-4 space-y-2">
               {invites.length > 0 ? (
                 invites.map((invite) => (
                   <div key={invite.id} className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <span>
-                        Team #{invite.team_id} • status: {invite.status}
+                        Команда #{invite.team_id} • статус: {invite.status}
                       </span>
                       {invite.status === "pending" ? (
                         <div className="flex gap-2">
@@ -203,14 +205,14 @@ export function ProfilePage({ currentPath, onNavigate, player, token, authStatus
                             disabled={inviteActionStatus === "loading"}
                             className="rounded-full border border-emerald-500/40 px-3 py-1 text-xs transition hover:border-emerald-300"
                           >
-                            Accept
+                            Принять
                           </button>
                           <button
                             onClick={() => respondInvite(invite.id, "decline")}
                             disabled={inviteActionStatus === "loading"}
                             className="rounded-full border border-rose-500/40 px-3 py-1 text-xs transition hover:border-rose-300"
                           >
-                            Decline
+                            Отклонить
                           </button>
                         </div>
                       ) : null}
@@ -218,15 +220,15 @@ export function ProfilePage({ currentPath, onNavigate, player, token, authStatus
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-white/70">No invites yet.</p>
+                <p className="text-sm text-white/70">Приглашений пока нет.</p>
               )}
-              {inviteActionStatus === "error" ? <p className="text-sm text-rose-200">Invite action error: {inviteActionError}</p> : null}
+              {inviteActionStatus === "error" ? <p className="text-sm text-rose-200">Ошибка действия: {inviteActionError}</p> : null}
             </div>
           </div>
         </section>
 
         <section className="hero-enter rounded-3xl border border-red-900/45 bg-black/60 p-5" style={{ animationDelay: "280ms" }}>
-          <h3 className="text-lg font-semibold">Recent matches</h3>
+          <h3 className="text-lg font-semibold">Последние матчи</h3>
           <div className="mt-4 space-y-2">
             {data.recentMatches.length > 0 ? (
               data.recentMatches.map((match) => {
@@ -235,7 +237,7 @@ export function ProfilePage({ currentPath, onNavigate, player, token, authStatus
                 return (
                   <div key={match.match_id} className="grid grid-cols-4 items-center rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2 text-sm">
                     <span>{data.heroNames[match.hero_id] || `Hero #${match.hero_id}`}</span>
-                    <span className={won ? "text-emerald-300" : "text-rose-300"}>{won ? "Win" : "Loss"}</span>
+                    <span className={won ? "text-emerald-300" : "text-rose-300"}>{won ? "Победа" : "Поражение"}</span>
                     <span>
                       <CountUp to={match.kills} />/<CountUp to={match.deaths} />/<CountUp to={match.assists} />
                     </span>
@@ -244,13 +246,14 @@ export function ProfilePage({ currentPath, onNavigate, player, token, authStatus
                 );
               })
             ) : (
-              <p className="text-sm text-white/70">No recent matches.</p>
+              <p className="text-sm text-white/70">Последних матчей нет.</p>
             )}
           </div>
         </section>
 
-        {status === "error" ? <p className="text-sm text-rose-200">Profile loading error: {error}</p> : null}
+        {status === "error" ? <p className="text-sm text-rose-200">Ошибка загрузки профиля: {error}</p> : null}
       </main>
+      <Footer />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 ﻿import { useMemo } from "react";
 import { AnimatedBackdrop } from "@/components/background/AnimatedBackdrop";
 import { TopNav } from "@/components/layout/TopNav";
+import { Footer } from "@/components/layout/Footer";
 import { CountUp } from "@/components/ui/CountUp";
 import { useTournamentsData } from "@/hooks/useTournamentsData";
 import type { Player } from "@/types";
@@ -75,7 +76,7 @@ export function TournamentDetailsPage({
             ← Назад к турнирам
           </button>
 
-          <h1 className="mt-3 text-3xl font-semibold">{leagueMeta?.name || `League #${leagueId}`}</h1>
+          <h1 className="mt-3 text-3xl font-semibold">{leagueMeta?.name || `Лига #${leagueId}`}</h1>
           <p className="mt-2 text-white/70">Детализация по данным OpenDota.</p>
 
           <div className="mt-4 grid gap-3 text-sm text-white/80 sm:grid-cols-3">
@@ -126,6 +127,7 @@ export function TournamentDetailsPage({
         {status === "loading" ? <p className="text-white/70">Загрузка турнира...</p> : null}
         {status === "error" ? <p className="text-rose-200">Ошибка загрузки турнира: {error}</p> : null}
       </main>
+      <Footer />
     </div>
   );
 }

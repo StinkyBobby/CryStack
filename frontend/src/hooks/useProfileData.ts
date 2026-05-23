@@ -128,7 +128,7 @@ export function useProfileData(player: Player | null, token: string | null) {
         }
 
         setStatus("error");
-        setError(e instanceof Error ? e.message : "failed to load profile data");
+        setError(e instanceof Error ? e.message : "не удалось загрузить данные профиля");
       }
     };
 

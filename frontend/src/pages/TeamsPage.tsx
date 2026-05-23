@@ -1,7 +1,9 @@
 ﻿import { useEffect, useMemo, useState } from "react";
+import { Lock } from "lucide-react";
 import { apiRequest } from "@/api/client";
 import { AnimatedBackdrop } from "@/components/background/AnimatedBackdrop";
 import { TopNav } from "@/components/layout/TopNav";
+import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/ui/CountUp";
 import { useTeamsOverview } from "@/hooks/useTeamsOverview";
@@ -160,9 +162,46 @@ export function TeamsPage({ currentPath, onNavigate, player, token, authStatus, 
       setWantedRoles([]);
     } catch (e) {
       setCreateStatus("error");
-      setCreateError(e instanceof Error ? e.message : "failed to create team");
+      setCreateError(e instanceof Error ? e.message : "Не удалось создать команду");
     }
   };
+
+  const isAuthenticated = authStatus === "authenticated" && !!player;
+
+  if (!isAuthenticated) {
+    return (
+      <div className="relative min-h-screen w-full overflow-hidden bg-[#020617] text-white">
+        <AnimatedBackdrop />
+
+        <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-14 pt-6 sm:px-6 lg:px-8 lg:pt-8">
+          <TopNav
+            player={player}
+            authStatus={authStatus}
+            currentPath={currentPath}
+            onNavigate={onNavigate}
+            onLogin={onLogin}
+            onLogout={onLogout}
+          />
+
+          <section className="hero-enter flex flex-col items-center justify-center rounded-3xl border border-red-900/45 bg-black/60 px-6 py-16 text-center">
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-red-900/40 bg-white/[0.03]">
+              <Lock className="h-7 w-7 text-white/60" />
+            </div>
+            <h2 className="text-2xl font-semibold">Необходима авторизация</h2>
+            <p className="mt-3 max-w-md text-white/70">
+              Для просмотра и управления командами необходимо войти в аккаунт через Steam.
+            </p>
+            <div className="mt-6">
+              <Button onClick={onLogin} disabled={authStatus === "loading"}>
+                {authStatus === "loading" ? "Проверка..." : "Войти через Steam"}
+              </Button>
+            </div>
+          </section>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[#020617] text-white">
@@ -207,7 +246,7 @@ export function TeamsPage({ currentPath, onNavigate, player, token, authStatus, 
                   className="w-full rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2 text-left text-sm transition hover:border-[#df2531]/70"
                   onClick={() => onNavigate(`/teams/${team.id}`)}
                 >
-                  {team.name} • wanted: {(team.wanted_roles || []).length} • current: {(team.current_roles || []).length}
+                  {team.name} • нужно: {(team.wanted_roles || []).length} • есть: {(team.current_roles || []).length}
                 </button>
               ))
             ) : (
@@ -343,6 +382,7 @@ export function TeamsPage({ currentPath, onNavigate, player, token, authStatus, 
           {status === "success" && filteredTeams.length === 0 ? <p className="text-white/70">По фильтрам команд не найдено.</p> : null}
         </section>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 ﻿import { useMemo, useState } from "react";
 import { AnimatedBackdrop } from "@/components/background/AnimatedBackdrop";
 import { TopNav } from "@/components/layout/TopNav";
+import { Footer } from "@/components/layout/Footer";
 import { CountUp } from "@/components/ui/CountUp";
 import { useTournamentsData } from "@/hooks/useTournamentsData";
 import type { Player } from "@/types";
@@ -57,13 +58,13 @@ export function TournamentsPage({ currentPath, onNavigate, player, authStatus, o
 
           <div className="mt-4 grid gap-3 text-sm text-white/80 sm:grid-cols-3">
             <div className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2">
-              Active: <CountUp to={active.length} />
+              Активных: <CountUp to={active.length} />
             </div>
             <div className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2">
-              Recent: <CountUp to={recent.length} />
+              Завершённых: <CountUp to={recent.length} />
             </div>
             <div className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2">
-              Upcoming: <CountUp to={upcoming.length} />
+              Предстоящих: <CountUp to={upcoming.length} />
             </div>
           </div>
 
@@ -160,6 +161,7 @@ export function TournamentsPage({ currentPath, onNavigate, player, authStatus, o
         {status === "loading" ? <p className="text-white/70">Загрузка турниров...</p> : null}
         {status === "error" ? <p className="text-rose-200">Ошибка загрузки турниров: {error}</p> : null}
       </main>
+      <Footer />
     </div>
   );
 }

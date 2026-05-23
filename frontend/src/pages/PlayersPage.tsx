@@ -2,6 +2,7 @@
 import { CountUp } from "@/components/ui/CountUp";
 import { AnimatedBackdrop } from "@/components/background/AnimatedBackdrop";
 import { TopNav } from "@/components/layout/TopNav";
+import { Footer } from "@/components/layout/Footer";
 import { usePlayersList } from "@/hooks/usePlayersList";
 import type { Player } from "@/types";
 
@@ -88,7 +89,7 @@ export function PlayersPage({ currentPath, onNavigate, player, authStatus, onLog
                   <div>
                     <p className="font-semibold">{p.name}</p>
                     <p className="text-sm text-white/70">
-                      {p.role || "unknown"} • {p.style || "n/a"}
+                      {p.role || "неизвестно"} • {p.style || "н/д"}
                     </p>
                   </div>
                 </div>
@@ -97,7 +98,7 @@ export function PlayersPage({ currentPath, onNavigate, player, authStatus, onLog
                     MMR: <CountUp to={p.mmr || 0} />
                   </p>
                   <p>
-                    Winrate: <CountUp to={Math.round((p.winrate || 0) * 10)} scale={10} suffix="%" />
+                    Винрейт: <CountUp to={Math.round((p.winrate || 0) * 10)} scale={10} suffix="%" />
                   </p>
                   <button
                     onClick={() => onNavigate(`/players/${p.steam_id}`)}
@@ -115,6 +116,7 @@ export function PlayersPage({ currentPath, onNavigate, player, authStatus, onLog
           {status === "success" && filtered.length === 0 ? <p className="text-white/70">По фильтрам игроков не найдено.</p> : null}
         </section>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -155,7 +155,7 @@ export function useAnalyticsData() {
         }
 
         setStatus("error");
-        setError(e instanceof Error ? e.message : "failed to load global analytics");
+        setError(e instanceof Error ? e.message : "не удалось загрузить глобальную аналитику");
       }
     };
 
@@ -214,10 +214,10 @@ export function useAnalyticsData() {
       .slice(0, 8);
 
     const insights = [
-      totalProMatches > 0 ? `Tracked ${totalProMatches} recent pro matches.` : "No pro matches in sample.",
-      `Radiant winrate in sample: ${radiantWinrate.toFixed(1)}%.`,
-      `Average pro match duration: ${avgDurationMin.toFixed(1)} min.`,
-      `High-kill games (80+ total kills): ${highKillMatches}.`,
+      totalProMatches > 0 ? `Отслежено ${totalProMatches} недавних про-матчей.` : "В выборке нет про-матчей.",
+      `Винрейт Radiant в выборке: ${radiantWinrate.toFixed(1)}%.`,
+      `Средняя длительность про-матча: ${avgDurationMin.toFixed(1)} мин.`,
+      `Матчей с большим числом убийств (80+): ${highKillMatches}.`,
     ];
 
     return {

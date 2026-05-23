@@ -1,5 +1,6 @@
 ﻿import { AnimatedBackdrop } from "@/components/background/AnimatedBackdrop";
 import { TopNav } from "@/components/layout/TopNav";
+import { Footer } from "@/components/layout/Footer";
 import { FeaturesSection } from "@/components/sections/FeaturesSection";
 import { HeroSection } from "@/components/sections/HeroSection";
 import { StatsStrip } from "@/components/sections/StatsStrip";
@@ -55,6 +56,7 @@ export function LandingPage({ currentPath, onNavigate, player, authStatus, authE
           error={error}
         />
       </main>
+      <Footer />
     </div>
   );
 }

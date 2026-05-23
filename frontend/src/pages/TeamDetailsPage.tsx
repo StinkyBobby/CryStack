@@ -2,6 +2,7 @@
 import { apiRequest } from "@/api/client";
 import { AnimatedBackdrop } from "@/components/background/AnimatedBackdrop";
 import { TopNav } from "@/components/layout/TopNav";
+import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/ui/CountUp";
 import type { Player, Team } from "@/types";
@@ -116,7 +117,7 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
           return;
         }
         setStatus("error");
-        setError(e instanceof Error ? e.message : "failed to load team");
+        setError(e instanceof Error ? e.message : "не удалось загрузить команду");
       }
     };
 
@@ -180,7 +181,7 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
       setSaveStatus("success");
     } catch (e) {
       setSaveStatus("error");
-      setSaveError(e instanceof Error ? e.message : "failed to save team");
+      setSaveError(e instanceof Error ? e.message : "не удалось сохранить команду");
     }
   };
 
@@ -199,7 +200,7 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
       onNavigate("/teams");
     } catch (e) {
       setSaveStatus("error");
-      setSaveError(e instanceof Error ? e.message : "failed to delete team");
+      setSaveError(e instanceof Error ? e.message : "не удалось удалить команду");
     }
   };
 
@@ -225,7 +226,7 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
       setInviteQuery("");
     } catch (e) {
       setInviteStatus("error");
-      setInviteError(e instanceof Error ? e.message : "failed to send invite");
+      setInviteError(e instanceof Error ? e.message : "не удалось отправить приглашение");
     }
   };
 
@@ -299,7 +300,7 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
       );
     } catch (e) {
       setAutoInviteStatus("error");
-      setAutoInviteError(e instanceof Error ? e.message : "failed to run auto-invite");
+      setAutoInviteError(e instanceof Error ? e.message : "не удалось запустить автоподбор");
     }
   };
 
@@ -407,7 +408,7 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
                           </span>
                         </div>
                         <div className="mt-1 text-xs text-white/70">
-                          role: {candidate.player.role || "unknown"} | MMR diff: <CountUp to={candidate.mmr_diff || 0} />
+                          роль: {candidate.player.role || "неизвестно"} | разница MMR: <CountUp to={candidate.mmr_diff || 0} />
                         </div>
                       </div>
                     ))
@@ -433,7 +434,7 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
                       <img src={member.avatar} alt={member.name} className="h-9 w-9 rounded-full object-cover" />
                       <div>
                         <p className="text-sm font-medium text-white">{member.name}</p>
-                        <p className="text-xs text-white/70">{member.role || "unknown role"}</p>
+                        <p className="text-xs text-white/70">{member.role || "роль неизвестна"}</p>
                       </div>
                     </div>
                     <p className="mt-2 text-xs text-white/70">
@@ -515,7 +516,7 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
                     }`}
                     onClick={() => setInviteSteamId(candidate.steam_id)}
                   >
-                    {candidate.name} • {candidate.role || "unknown"} • {candidate.steam_id}
+                    {candidate.name} • {candidate.role || "неизвестно"} • {candidate.steam_id}
                   </button>
                 ))}
               </div>
@@ -531,6 +532,7 @@ export function TeamDetailsPage({ teamId, currentPath, onNavigate, player, token
           </section>
         ) : null}
       </main>
+      <Footer />
     </div>
   );
 }

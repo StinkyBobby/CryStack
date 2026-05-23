@@ -23,7 +23,7 @@ export function usePlayersList() {
       } catch (e) {
         if (cancelled) return;
         setStatus("error");
-        setError(e instanceof Error ? e.message : "failed to load players");
+        setError(e instanceof Error ? e.message : "не удалось загрузить игроков");
       }
     };
 

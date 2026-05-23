@@ -46,7 +46,7 @@ export function useTeamsOverview() {
       setStatus("success");
     } catch (e) {
       setStatus("error");
-      setError(e instanceof Error ? e.message : "failed to load teams");
+      setError(e instanceof Error ? e.message : "не удалось загрузить команды");
     }
   }, [fetchAllTeams]);
 
@@ -90,7 +90,7 @@ export function useTeamsOverview() {
           return;
         }
         setStatus("error");
-        setError(e instanceof Error ? e.message : "failed to load teams");
+        setError(e instanceof Error ? e.message : "не удалось загрузить команды");
       }
     };
 

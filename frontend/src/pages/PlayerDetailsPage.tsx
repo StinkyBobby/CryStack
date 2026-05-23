@@ -2,6 +2,7 @@
 import { apiRequest } from "@/api/client";
 import { AnimatedBackdrop } from "@/components/background/AnimatedBackdrop";
 import { TopNav } from "@/components/layout/TopNav";
+import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/ui/CountUp";
 import type { Player, Team } from "@/types";
@@ -94,7 +95,7 @@ export function PlayerDetailsPage({ steamId, currentPath, onNavigate, player, to
           return;
         }
         setStatus("error");
-        setError(e instanceof Error ? e.message : "failed to load player profile");
+        setError(e instanceof Error ? e.message : "не удалось загрузить профиль игрока");
       }
     };
 
@@ -155,7 +156,7 @@ export function PlayerDetailsPage({ steamId, currentPath, onNavigate, player, to
       setInviteStatus("success");
     } catch (e) {
       setInviteStatus("error");
-      setInviteError(e instanceof Error ? e.message : "failed to invite player");
+      setInviteError(e instanceof Error ? e.message : "не удалось пригласить игрока");
     }
   };
 
@@ -191,12 +192,12 @@ export function PlayerDetailsPage({ steamId, currentPath, onNavigate, player, to
                 <div>
                   <h1 className="text-3xl font-semibold">{target.name}</h1>
                   <p className="text-sm text-white/70">SteamID: {target.steam_id}</p>
-                  <p className="text-sm text-white/70">Role: {target.role || "unknown"}</p>
+                  <p className="text-sm text-white/70">Роль: {target.role || "неизвестно"}</p>
                 </div>
               </div>
               <div className="text-right text-sm text-white/80">
                 <p>MMR: <CountUp to={target.mmr || 0} /></p>
-                <p>Winrate: <CountUp to={Math.round(winrate * 10)} scale={10} suffix="%" /></p>
+                <p>Винрейт: <CountUp to={Math.round(winrate * 10)} scale={10} suffix="%" /></p>
               </div>
             </div>
           ) : null}
@@ -273,7 +274,7 @@ export function PlayerDetailsPage({ steamId, currentPath, onNavigate, player, to
                   const won = (radiantPlayer && match.radiant_win) || (!radiantPlayer && !match.radiant_win);
                   return (
                     <div key={match.match_id} className="grid grid-cols-4 items-center rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2 text-sm">
-                      <span>{heroNames[match.hero_id] || `Hero #${match.hero_id}`}</span>
+                      <span>{heroNames[match.hero_id] || `Герой #${match.hero_id}`}</span>
                       <span className={won ? "text-emerald-300" : "text-rose-300"}>{won ? "Победа" : "Поражение"}</span>
                       <span>
                         <CountUp to={match.kills} />/<CountUp to={match.deaths} />/<CountUp to={match.assists} />
@@ -289,6 +290,7 @@ export function PlayerDetailsPage({ steamId, currentPath, onNavigate, player, to
           </section>
         ) : null}
       </main>
+      <Footer />
     </div>
   );
 }

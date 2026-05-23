@@ -24,7 +24,7 @@ export function HeroSection({ playersCount, openTeams, player, authStatus, authE
 
       <div className="relative mx-auto flex max-w-3xl flex-col items-center text-center">
         <p className="line-rise mb-4 rounded-full border border-white/40 bg-white/10 px-4 py-1 text-[11px] font-medium uppercase tracking-[0.20em] text-white/90 sm:text-xs">
-          Dota 2 Team Intelligence
+          Аналитика команд Dota 2
         </p>
 
         <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-6xl">

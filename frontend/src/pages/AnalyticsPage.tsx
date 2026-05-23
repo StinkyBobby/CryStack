@@ -1,6 +1,7 @@
 ﻿import { type ReactNode } from "react";
 import { AnimatedBackdrop } from "@/components/background/AnimatedBackdrop";
 import { TopNav } from "@/components/layout/TopNav";
+import { Footer } from "@/components/layout/Footer";
 import { CountUp } from "@/components/ui/CountUp";
 import { useAnalyticsData } from "@/hooks/useAnalyticsData";
 import type { Player } from "@/types";
@@ -32,35 +33,35 @@ export function AnalyticsPage({ currentPath, onNavigate, player, authStatus, onL
         />
 
         <section className="hero-enter rounded-3xl border border-red-900/45 bg-black/60 p-6">
-          <h1 className="text-4xl font-semibold">Global Dota 2 Analytics</h1>
-          <p className="mt-2 text-white/70">Live pro-scene signals, meta heroes, trends and useful insights from public sources.</p>
+          <h1 className="text-4xl font-semibold">Глобальная аналитика Dota 2</h1>
+          <p className="mt-2 text-white/70">Сигналы про-сцены, мета-герои, тренды и полезные данные из открытых источников.</p>
 
           <div className="mt-4 grid gap-3 text-sm text-white/80 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric label="Recent pro matches" value={<CountUp to={computed.totalProMatches} />} />
-            <Metric label="Radiant winrate" value={<CountUp to={Math.round(computed.radiantWinrate * 10)} scale={10} suffix="%" />} />
-            <Metric label="Avg match duration" value={<CountUp to={Math.round(computed.avgDurationMin * 10)} scale={10} suffix=" min" />} />
-            <Metric label="High-kill matches" value={<CountUp to={computed.highKillMatches} />} />
+            <Metric label="Про-матчей недавно" value={<CountUp to={computed.totalProMatches} />} />
+            <Metric label="Винрейт Radiant" value={<CountUp to={Math.round(computed.radiantWinrate * 10)} scale={10} suffix="%" />} />
+            <Metric label="Средняя длительность" value={<CountUp to={Math.round(computed.avgDurationMin * 10)} scale={10} suffix=" мин" />} />
+            <Metric label="Матчей с большим числом убийств" value={<CountUp to={computed.highKillMatches} />} />
           </div>
         </section>
 
         <section className="hero-enter grid gap-4 lg:grid-cols-3" style={{ animationDelay: "120ms" }}>
           <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5 lg:col-span-2">
-            <h2 className="text-xl font-semibold">Meta heroes (pro picks)</h2>
+            <h2 className="text-xl font-semibold">Мета-герои (про-пики)</h2>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               {computed.metaHeroes.map((hero) => (
                 <div key={hero.id} className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2 text-sm">
                   <div className="flex items-center justify-between">
                     <span>{hero.name}</span>
-                    <span>picks: <CountUp to={hero.picks} /></span>
+                    <span>пиков: <CountUp to={hero.picks} /></span>
                   </div>
-                  <p className="text-xs text-white/70">winrate: <CountUp to={Math.round(hero.winrate * 10)} scale={10} suffix="%" /></p>
+                  <p className="text-xs text-white/70">винрейт: <CountUp to={Math.round(hero.winrate * 10)} scale={10} suffix="%" /></p>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5">
-            <h2 className="text-xl font-semibold">Trending leagues</h2>
+            <h2 className="text-xl font-semibold">Популярные лиги</h2>
             <div className="mt-4 space-y-2 text-sm">
               {computed.trendingLeagues.map((league) => (
                 <div key={league.name} className="flex items-center justify-between rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2">
@@ -74,7 +75,7 @@ export function AnalyticsPage({ currentPath, onNavigate, player, authStatus, onL
 
         <section className="hero-enter grid gap-4 lg:grid-cols-2" style={{ animationDelay: "220ms" }}>
           <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5">
-            <h2 className="text-xl font-semibold">Hot pro players</h2>
+            <h2 className="text-xl font-semibold">Топ про-игроков</h2>
             <div className="mt-4 space-y-2 text-sm">
               {computed.hotPros.length > 0 ? (
                 computed.hotPros.map((pro) => (
@@ -84,7 +85,7 @@ export function AnalyticsPage({ currentPath, onNavigate, player, authStatus, onL
                       <span>{pro.team}</span>
                     </div>
                     <p className="text-xs text-white/70">
-                      games: <CountUp to={pro.games} /> | winrate: <CountUp to={Math.round(pro.winrate * 10)} scale={10} suffix="%" />
+                      игр: <CountUp to={pro.games} /> | винрейт: <CountUp to={Math.round(pro.winrate * 10)} scale={10} suffix="%" />
                     </p>
                   </div>
                 ))
@@ -95,7 +96,7 @@ export function AnalyticsPage({ currentPath, onNavigate, player, authStatus, onL
           </div>
 
           <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5">
-            <h2 className="text-xl font-semibold">Insights</h2>
+            <h2 className="text-xl font-semibold">Выводы</h2>
             <div className="mt-4 space-y-2 text-sm">
               {computed.insights.map((insight, idx) => (
                 <div key={`${insight}-${idx}`} className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2">
@@ -106,9 +107,10 @@ export function AnalyticsPage({ currentPath, onNavigate, player, authStatus, onL
           </div>
         </section>
 
-        {status === "loading" ? <p className="text-white/70">Loading global analytics...</p> : null}
-        {status === "error" ? <p className="text-rose-200">Global analytics loading error: {error}</p> : null}
+        {status === "loading" ? <p className="text-white/70">Загрузка аналитики...</p> : null}
+        {status === "error" ? <p className="text-rose-200">Ошибка загрузки аналитики: {error}</p> : null}
       </main>
+      <Footer />
     </div>
   );
 }

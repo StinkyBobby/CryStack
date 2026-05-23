@@ -46,7 +46,7 @@ export function useTournamentsData() {
       } catch (e) {
         if (cancelled) return;
         setStatus("error");
-        setError(e instanceof Error ? e.message : "failed to load tournaments");
+        setError(e instanceof Error ? e.message : "не удалось загрузить турниры");
       }
     };
 
