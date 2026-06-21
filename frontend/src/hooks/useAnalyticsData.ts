@@ -1,26 +1,26 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 
-const CDN_ROOT = "https://cdn.jsdelivr.net/gh/odota/api@latest/data";
+async function fetchWithRetry<T>(url: string, retries = 2, timeout = 8000): Promise<T> {
+  let lastError: Error | null = null;
 
-async function fetchWithTimeout<T>(url: string, timeout = 3000): Promise<T> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    const resp = await fetch(url, { signal: controller.signal });
-    clearTimeout(id);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return (await resp.json()) as T;
-  } catch {
-    // fallback to CDN snapshot for main resources
-    if (url.startsWith("https://api.opendota.com/api/")) {
-      const name = url.split("/").pop()!;
-      const cdnUrl = `${CDN_ROOT}/${name}.json`;
-      const cdnResp = await fetch(cdnUrl);
-      if (!cdnResp.ok) throw new Error(`CDN fallback failed ${cdnResp.status}`);
-      return (await cdnResp.json()) as T;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      const resp = await fetch(url, { signal: controller.signal });
+      clearTimeout(id);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      return (await resp.json()) as T;
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+      if (attempt < retries) {
+        // Wait before retry (500ms, 1500ms, ...)
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+      }
     }
-    throw new Error("Network timeout and no CDN fallback");
   }
+
+  throw lastError ?? new Error("Network error");
 }
 
 async function fetchPlayerWL(accountId: number): Promise<PlayerWL | null> {
@@ -31,7 +31,11 @@ async function fetchPlayerWL(accountId: number): Promise<PlayerWL | null> {
     if (Date.now() - ts < 10 * 60 * 1000) return data;
   }
   try {
-    const wl = await fetch(`https://api.opendota.com/api/players/${accountId}/wl`).then(r => r.json());
+    const wl = await fetchWithRetry<{ win?: number; lose?: number }>(
+      `https://api.opendota.com/api/players/${accountId}/wl`,
+      1,
+      5000
+    );
     const result = { win: Number(wl.win || 0), lose: Number(wl.lose || 0) };
     localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data: result }));
     return result;
@@ -93,9 +97,9 @@ export function useAnalyticsData() {
       setError(null);
       try {
         const [matchesPayload, heroesPayload, proPlayersPayload] = await Promise.all([
-          fetchWithTimeout<ProMatch[]>("https://api.opendota.com/api/proMatches"),
-          fetchWithTimeout<HeroStat[]>("https://api.opendota.com/api/heroStats"),
-          fetchWithTimeout<ProPlayer[]>("https://api.opendota.com/api/proPlayers"),
+          fetchWithRetry<ProMatch[]>("https://api.opendota.com/api/proMatches"),
+          fetchWithRetry<HeroStat[]>("https://api.opendota.com/api/heroStats"),
+          fetchWithRetry<ProPlayer[]>("https://api.opendota.com/api/proPlayers"),
         ]);
 
         if (cancelled) {
@@ -213,22 +217,97 @@ export function useAnalyticsData() {
       .sort((a, b) => b.games - a.games || b.winrate - a.winrate)
       .slice(0, 8);
 
-    const insights = [
-      totalProMatches > 0 ? `Отслежено ${totalProMatches} недавних про-матчей.` : "В выборке нет про-матчей.",
-      `Винрейт Radiant в выборке: ${radiantWinrate.toFixed(1)}%.`,
-      `Средняя длительность про-матча: ${avgDurationMin.toFixed(1)} мин.`,
-      `Матчей с большим числом убийств (80+): ${highKillMatches}.`,
-    ];
+    // Highest kill match
+    const highestKillMatch = sample
+      .filter((m) => m.radiant_score !== undefined && m.dire_score !== undefined)
+      .sort((a, b) => (b.radiant_score || 0) + (b.dire_score || 0) - (a.radiant_score || 0) - (a.dire_score || 0))[0];
+    const highestKillMatchFormatted = highestKillMatch
+      ? {
+          matchId: highestKillMatch.match_id,
+          totalKills: (highestKillMatch.radiant_score || 0) + (highestKillMatch.dire_score || 0),
+          radiantScore: highestKillMatch.radiant_score || 0,
+          direScore: highestKillMatch.dire_score || 0,
+        }
+      : null;
+
+    // Longest & shortest matches (with duration)
+    const withDuration = sample.filter((m) => m.duration && m.duration > 0);
+    const longestMatch = [...withDuration].sort((a, b) => (b.duration || 0) - (a.duration || 0))[0];
+    const shortestMatch = [...withDuration].sort((a, b) => (a.duration || 0) - (b.duration || 0))[0];
+
+    const fmtDuration = (sec: number) => {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${String(s).padStart(2, "0")}`;
+    };
+
+    // Avg kills per match
+    const killsAvailable = sample.filter((m) => m.radiant_score !== undefined && m.dire_score !== undefined);
+    const avgKillsPerMatch =
+      killsAvailable.length > 0
+        ? Math.round(
+            killsAvailable.reduce((sum, m) => sum + (m.radiant_score || 0) + (m.dire_score || 0), 0) / killsAvailable.length
+          )
+        : 0;
+
+    // Most reliable hero (min 20 picks, highest winrate)
+    const mostReliableHero = [...heroStats]
+      .filter((h) => (h.pro_pick || 0) >= 20)
+      .sort((a, b) => {
+        const wrA = a.pro_pick > 0 ? (a.pro_win / a.pro_pick) * 100 : 0;
+        const wrB = b.pro_pick > 0 ? (b.pro_win / b.pro_pick) * 100 : 0;
+        return wrB - wrA;
+      })[0];
+    const mostReliableHeroFormatted = mostReliableHero
+      ? {
+          name: mostReliableHero.localized_name,
+          winrate: mostReliableHero.pro_pick > 0 ? Math.round((mostReliableHero.pro_win / mostReliableHero.pro_pick) * 100) : 0,
+          picks: mostReliableHero.pro_pick || 0,
+        }
+      : null;
+
+    // Bloodiest league (highest avg kills per match, min 3 matches)
+    const leagueKillMap = new Map<string, { totalKills: number; count: number }>();
+    killsAvailable.forEach((m) => {
+      const key = m.league_name || `League #${m.leagueid}`;
+      const kills = (m.radiant_score || 0) + (m.dire_score || 0);
+      const existing = leagueKillMap.get(key);
+      if (existing) {
+        existing.totalKills += kills;
+        existing.count += 1;
+      } else {
+        leagueKillMap.set(key, { totalKills: kills, count: 1 });
+      }
+    });
+    const bloodiestLeagueEntry = [...leagueKillMap.entries()]
+      .filter(([, v]) => v.count >= 3)
+      .sort((a, b) => b[1].totalKills / b[1].count - a[1].totalKills / a[1].count)[0];
+    const bloodiestLeague = bloodiestLeagueEntry
+      ? {
+          name: bloodiestLeagueEntry[0],
+          avgKills: Math.round(bloodiestLeagueEntry[1].totalKills / bloodiestLeagueEntry[1].count),
+        }
+      : null;
 
     return {
       totalProMatches,
       radiantWinrate,
+      radiantWinrateFormatted: `${radiantWinrate.toFixed(1)}%`,
       avgDurationMin,
       highKillMatches,
       trendingLeagues,
       metaHeroes,
       hotPros,
-      insights,
+      highestKillMatch: highestKillMatchFormatted,
+      longestMatch: longestMatch
+        ? { matchId: longestMatch.match_id, durationFormatted: fmtDuration(longestMatch.duration || 0) }
+        : null,
+      shortestMatch: shortestMatch
+        ? { matchId: shortestMatch.match_id, durationFormatted: fmtDuration(shortestMatch.duration || 0) }
+        : null,
+      avgKillsPerMatch,
+      mostReliableHero: mostReliableHeroFormatted,
+      bloodiestLeague,
     };
   }, [heroStats, matches, proPlayers, proPlayersWL]);
 

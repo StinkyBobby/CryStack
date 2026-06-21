@@ -1,4 +1,4 @@
-﻿package handlers
+package handlers
 
 import (
 	"net/http"
@@ -85,6 +85,14 @@ func RegisterInviteRoutes(api *gin.RouterGroup, gormDB *gorm.DB, cfg *config.Con
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch invites"})
 				return
 			}
+
+			for i := range myInvites {
+				var team models.Team
+				if err := gormDB.Select("name").First(&team, myInvites[i].TeamID).Error; err == nil {
+					myInvites[i].TeamName = team.Name
+				}
+			}
+
 			c.JSON(http.StatusOK, myInvites)
 		})
 

@@ -14,7 +14,7 @@ export function Footer() {
 
           <div className="flex items-center gap-4">
             <a
-              href="https://github.com"
+              href="https://github.com/StinkyBobby/CryStack"
               target="_blank"
               rel="noopener noreferrer"
               className="flex h-9 w-9 items-center justify-center rounded-full border border-red-900/35 text-white/60 transition hover:border-[#df2531]/60 hover:text-white"
@@ -23,9 +23,11 @@ export function Footer() {
               <Github className="h-4 w-4" />
             </a>
             <a
-              href="#"
+              href="https://t.me/TrenbolonaEnjoyer"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex h-9 w-9 items-center justify-center rounded-full border border-red-900/35 text-white/60 transition hover:border-[#df2531]/60 hover:text-white"
-              aria-label="Discord"
+              aria-label="Telegram"
             >
               <MessageCircle className="h-4 w-4" />
             </a>
@@ -34,13 +36,8 @@ export function Footer() {
 
         <div className="flex flex-col gap-4 border-t border-red-900/20 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-white/40">
-            © {new Date().getFullYear()} CryStack. Все права защищены.
+            © {new Date().getFullYear()} CryStack
           </p>
-          <div className="flex items-center gap-5 text-xs text-white/40">
-            <span className="transition hover:text-white/70 cursor-default">Условия использования</span>
-            <span className="transition hover:text-white/70 cursor-default">Конфиденциальность</span>
-            <span className="transition hover:text-white/70 cursor-default">Контакты</span>
-          </div>
         </div>
       </div>
     </footer>

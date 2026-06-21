@@ -142,21 +142,7 @@ export function ProfilePage({ currentPath, onNavigate, player, token, authStatus
             <p className="text-sm text-white/70">Динамика показателя (K+A-D) в последних матчах.</p>
 
             {matchTrend.length > 1 ? (
-              <svg viewBox="0 0 600 180" className="mt-4 h-44 w-full">
-                <polyline
-                  fill="none"
-                  stroke="#df2531"
-                  strokeWidth="3"
-                  points={matchTrend
-                    .map((value, index) => {
-                      const x = (index / (matchTrend.length - 1)) * 580 + 10;
-                      const max = Math.max(...matchTrend, 1);
-                      const y = 170 - (value / max) * 140;
-                      return `${x},${y}`;
-                    })
-                    .join(" ")}
-                />
-              </svg>
+              <MatchFormChart matchTrend={matchTrend} recentMatches={data.recentMatches} heroNames={data.heroNames} />
             ) : (
               <p className="mt-4 text-sm text-white/70">Недостаточно матчей для отображения графика.</p>
             )}
@@ -196,7 +182,7 @@ export function ProfilePage({ currentPath, onNavigate, player, token, authStatus
                   <div key={invite.id} className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <span>
-                        Команда #{invite.team_id} • статус: {invite.status}
+                        {invite.team_name || `Команда #${invite.team_id}`} • статус: {invite.status}
                       </span>
                       {invite.status === "pending" ? (
                         <div className="flex gap-2">
@@ -272,6 +258,132 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
     <div className="flex items-center justify-between rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2">
       <span className="text-white/70">{label}</span>
       <span className="font-medium text-white">{value}</span>
+    </div>
+  );
+}
+
+/* ---------- Match Form Chart ---------- */
+
+interface MatchFormChartProps {
+  matchTrend: number[];
+  recentMatches: { hero_id: number; kills: number; deaths: number; assists: number }[];
+  heroNames: Record<number, string>;
+}
+
+function MatchFormChart({ matchTrend, recentMatches, heroNames }: MatchFormChartProps) {
+  const W = 640;
+  const H = 220;
+  const padLeft = 48;
+  const padRight = 20;
+  const padTop = 24;
+  const padBottom = 36;
+  const chartW = W - padLeft - padRight;
+  const chartH = H - padTop - padBottom;
+
+  const minVal = Math.min(...matchTrend);
+  const maxVal = Math.max(...matchTrend, 1);
+  const range = maxVal - minVal || 1;
+
+  // Nice Y-axis ticks (5-6 lines)
+  const tickCount = 5;
+  const rawStep = range / tickCount;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const niceStep = Math.ceil(rawStep / magnitude) * magnitude;
+  const yMin = Math.floor(minVal / niceStep) * niceStep;
+  const yMax = Math.ceil(maxVal / niceStep) * niceStep;
+  const yRange = yMax - yMin || 1;
+
+  const ticks: number[] = [];
+  for (let v = yMin; v <= yMax + niceStep * 0.001; v += niceStep) {
+    ticks.push(Math.round(v * 10) / 10);
+  }
+
+  const pointCoords = matchTrend.map((value, index) => {
+    const x = padLeft + (index / (matchTrend.length - 1)) * chartW;
+    const y = padTop + chartH - ((value - yMin) / yRange) * chartH;
+    return { x, y, value };
+  });
+
+  const linePoints = pointCoords.map((p) => `${p.x},${p.y}`).join(" ");
+
+  // Area fill under the line
+  const areaPoints = `${pointCoords[0].x},${padTop + chartH} ${linePoints} ${pointCoords[pointCoords.length - 1].x},${padTop + chartH}`;
+
+  return (
+    <div className="mt-4">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 240 }}>
+        {/* Grid lines + Y labels */}
+        {ticks.map((tick) => {
+          const y = padTop + chartH - ((tick - yMin) / yRange) * chartH;
+          return (
+            <g key={tick}>
+              <line x1={padLeft} y1={y} x2={padLeft + chartW} y2={y} stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
+              <text x={padLeft - 6} y={y + 4} textAnchor="end" fill="rgba(255,255,255,0.45)" fontSize="11" fontFamily="monospace">
+                {tick}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Area fill */}
+        <polygon points={areaPoints} fill="url(#formGradient)" opacity="0.18" />
+
+        {/* Gradient definition */}
+        <defs>
+          <linearGradient id="formGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#df2531" />
+            <stop offset="100%" stopColor="#df2531" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {/* Line */}
+        <polyline fill="none" stroke="#df2531" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" points={linePoints} />
+
+        {/* Dots + value labels */}
+        {pointCoords.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="4" fill="#020617" stroke="#df2531" strokeWidth="2" />
+            {/* Value above/below the dot */}
+            <text
+              x={p.x}
+              y={p.value >= (minVal + maxVal) / 2 ? p.y - 12 : p.y + 22}
+              textAnchor="middle"
+              fill="white"
+              fontSize="11"
+              fontWeight="600"
+              fontFamily="monospace"
+            >
+              {p.value}
+            </text>
+          </g>
+        ))}
+
+        {/* X-axis: match numbers */}
+        {pointCoords.map((p, i) => (
+          <text key={`x-${i}`} x={p.x} y={H - 6} textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="10">
+            {i + 1}
+          </text>
+        ))}
+
+        {/* Axis label */}
+        <text x={padLeft + chartW / 2} y={H - 0} textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="10">
+          Матчи (последние →)
+        </text>
+        <text x={12} y={padTop + chartH / 2} textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="10" transform={`rotate(-90, 12, ${padTop + chartH / 2})`}>
+          K+A-D
+        </text>
+      </svg>
+
+      {/* Legend: hero per match */}
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+        {recentMatches.slice(0, matchTrend.length).map((m, i) => (
+          <span key={i} className="text-xs text-white/50">
+            <span className="text-white/70">#{i + 1}</span>{" "}
+            {heroNames[m.hero_id] || `Hero #${m.hero_id}`}
+            <span className="text-white/35"> ({m.kills}/{m.deaths}/{m.assists})</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

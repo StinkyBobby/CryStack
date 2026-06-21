@@ -96,13 +96,73 @@ export function AnalyticsPage({ currentPath, onNavigate, player, authStatus, onL
           </div>
 
           <div className="rounded-3xl border border-red-900/45 bg-black/60 p-5">
-            <h2 className="text-xl font-semibold">Выводы</h2>
-            <div className="mt-4 space-y-2 text-sm">
-              {computed.insights.map((insight, idx) => (
-                <div key={`${insight}-${idx}`} className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2">
-                  {insight}
-                </div>
-              ))}
+            <h2 className="text-xl font-semibold">Интересные факты</h2>
+            <div className="mt-4 space-y-3 text-sm">
+              {/* Fun stat: most kills in a match */}
+              {computed.highestKillMatch && (
+                <InsightCard
+                  icon=""
+                  title="Самый кровавый матч"
+                  value={`${computed.highestKillMatch.totalKills} убийств`}
+                  detail={`${computed.highestKillMatch.radiantScore} — ${computed.highestKillMatch.direScore}`}
+                />
+              )}
+
+              {/* Longest match */}
+              {computed.longestMatch && (
+                <InsightCard
+                  icon=""
+                  title="Самый длинный матч"
+                  value={computed.longestMatch.durationFormatted}
+                 detail={`ID: ${computed.longestMatch.matchId}`}
+                />
+              )}
+
+              {/* Shortest match */}
+              {computed.shortestMatch && (
+                <InsightCard
+                  icon=""
+                  title="Самый быстрый матч"
+                  value={computed.shortestMatch.durationFormatted}
+                  detail={`ID: ${computed.shortestMatch.matchId}`}
+                />
+              )}
+
+              {/* Radiant vs Dire */}
+              <InsightCard
+                icon=""
+                title="Преимущество Radiant"
+                value={`${computed.radiantWinrateFormatted}`}
+                detail={`из ${computed.totalProMatches} матчей`}
+              />
+
+              {/* Avg kills per match */}
+              <InsightCard
+                icon=""
+                title="Среднее число убийств"
+                value={`${computed.avgKillsPerMatch}`}
+                detail="за матч в выборке"
+              />
+
+              {/* Top hero by winrate (min picks) */}
+              {computed.mostReliableHero && (
+                <InsightCard
+                  icon=""
+                  title="Самый стабильный герой"
+                  value={computed.mostReliableHero.name}
+                  detail={`${computed.mostReliableHero.winrate}% винрейт (${computed.mostReliableHero.picks} пиков)`}
+                />
+              )}
+
+              {/* Bloodiest league */}
+              {computed.bloodiestLeague && (
+                <InsightCard
+                  icon=""
+                  title="Самая агрессивная лига"
+                  value={computed.bloodiestLeague.name}
+                  detail={`${computed.bloodiestLeague.avgKills} убийств в среднем`}
+                />
+              )}
             </div>
           </div>
         </section>
@@ -120,6 +180,26 @@ function Metric({ label, value }: { label: string; value: ReactNode }) {
     <div className="rounded-xl border border-red-900/35 bg-white/[0.03] px-3 py-2">
       <p className="text-xs text-white/70">{label}</p>
       <p className="text-xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
+interface InsightCardProps {
+  icon: string;
+  title: string;
+  value: string;
+  detail: string;
+}
+
+function InsightCard({ icon, title, value, detail }: InsightCardProps) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-red-900/30 bg-white/[0.02] p-3 transition-colors hover:border-red-900/50 hover:bg-white/[0.04]">
+      <span className="mt-0.5 text-lg leading-none">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-white/45 uppercase tracking-wider">{title}</p>
+        <p className="mt-0.5 text-sm font-semibold text-white/90 truncate">{value}</p>
+        <p className="mt-0.5 text-xs text-white/35 truncate">{detail}</p>
+      </div>
     </div>
   );
 }

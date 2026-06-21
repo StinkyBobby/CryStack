@@ -18,6 +18,7 @@ export interface Player {
 export interface Invite {
     id: number;
     team_id: number;
+    team_name: string;
     steam_id: string;
     status: 'pending' | 'accepted' | 'declined';
     created_at: string;

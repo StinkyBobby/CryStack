@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface ProMatch {
   match_id: number;
@@ -18,13 +18,37 @@ interface League {
   end_timestamp?: number;
 }
 
+// Stratz upcoming tournament type
+interface StratzUpcomingLeague {
+  id: number;
+  name: string;
+  tier?: number;
+  startDate: number; // unix seconds
+  region?: number;
+  nodeType?: number;
+}
+
 type Status = "idle" | "loading" | "success" | "error";
+
+async function fetchStratzUpcoming(): Promise<StratzUpcomingLeague[]> {
+  // Stratz GraphQL — fetch upcoming leagues
+  const query = `query { leagues(request: {tier: [3, 4, 5], isFuture: true}) { id name tier startDate region } }`;
+  const resp = await fetch("https://api.stratz.com/graphql", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query }),
+  });
+  if (!resp.ok) throw new Error(`Stratz HTTP ${resp.status}`);
+  const json = (await resp.json()) as { data?: { leagues?: StratzUpcomingLeague[] } };
+  return json?.data?.leagues ?? [];
+}
 
 export function useTournamentsData() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [matches, setMatches] = useState<ProMatch[]>([]);
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [stratzUpcoming, setStratzUpcoming] = useState<StratzUpcomingLeague[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,15 +57,17 @@ export function useTournamentsData() {
       setStatus("loading");
       setError(null);
       try {
-        const [matchesPayload, leaguesPayload] = await Promise.all([
+        const [matchesPayload, leaguesPayload, stratzPayload] = await Promise.all([
           fetch("https://api.opendota.com/api/proMatches").then((r) => r.json() as Promise<ProMatch[]>),
           fetch("https://api.opendota.com/api/leagues").then((r) => r.json() as Promise<League[]>),
+          fetchStratzUpcoming().catch(() => [] as StratzUpcomingLeague[]), // don't fail if Stratz is down
         ]);
 
         if (cancelled) return;
 
         setMatches(Array.isArray(matchesPayload) ? matchesPayload : []);
         setLeagues(Array.isArray(leaguesPayload) ? leaguesPayload : []);
+        setStratzUpcoming(Array.isArray(stratzPayload) ? stratzPayload : []);
         setStatus("success");
       } catch (e) {
         if (cancelled) return;
@@ -83,14 +109,44 @@ export function useTournamentsData() {
       .filter((entry) => Math.max(...entry.matches.map((m) => m.start_time)) <= now - 86400)
       .sort((a, b) => Math.max(...b.matches.map((m) => m.start_time)) - Math.max(...a.matches.map((m) => m.start_time)));
 
-    const upcoming = leagues
+    // Upcoming: merge Stratz + OpenDota sources
+    const opendotaUpcoming = leagues
       .filter((league) => {
         const start = league.start_timestamp ?? 0;
         const end = league.end_timestamp ?? 0;
         return start > now || (start === 0 && end > now);
       })
+      .map((league) => ({
+        leagueid: league.leagueid,
+        name: league.name || `League #${league.leagueid}`,
+        tier: league.tier,
+        start_timestamp: league.start_timestamp,
+        end_timestamp: league.end_timestamp,
+        matches: [] as ProMatch[],
+      }));
+
+    const stratzUpcomingFormatted = stratzUpcoming
+      .filter((l) => l.startDate > now)
+      .map((l) => ({
+        leagueid: l.id,
+        name: l.name || `League #${l.id}`,
+        tier: l.tier ? String(l.tier) : undefined,
+        start_timestamp: l.startDate,
+        end_timestamp: undefined,
+        matches: [] as ProMatch[],
+      }));
+
+    // Deduplicate by leagueid (Stratz takes priority for upcoming)
+    const upcomingMap = new Map<number, (typeof opendotaUpcoming)[0]>();
+    opendotaUpcoming.forEach((l) => upcomingMap.set(l.leagueid, l));
+    stratzUpcomingFormatted.forEach((l) => {
+      if (!upcomingMap.has(l.leagueid)) {
+        upcomingMap.set(l.leagueid, l);
+      }
+    });
+    const upcoming = [...upcomingMap.values()]
       .sort((a, b) => (a.start_timestamp ?? 0) - (b.start_timestamp ?? 0))
-      .slice(0, 16);
+      .slice(0, 24);
 
     const recentFromLeagues = leagues
       .filter((league) => {
@@ -102,7 +158,7 @@ export function useTournamentsData() {
       .map((league) => ({
         leagueid: league.leagueid,
         name: league.name || `League #${league.leagueid}`,
-        matches: [],
+        matches: [] as ProMatch[],
       }));
 
     const dedupeByLeague = <T extends { leagueid: number }>(arr: T[]) => {
@@ -111,11 +167,11 @@ export function useTournamentsData() {
       return [...m.values()];
     };
 
-    const active = dedupeByLeague(activeFromMatches).slice(0, 16);
-    const recent = dedupeByLeague([...recentFromMatches, ...recentFromLeagues]).slice(0, 16);
+    const active = dedupeByLeague(activeFromMatches).slice(0, 24);
+    const recent = dedupeByLeague([...recentFromMatches, ...recentFromLeagues]).slice(0, 24);
 
     return { active, recent, upcoming };
-  }, [matches, leagues]);
+  }, [matches, leagues, stratzUpcoming]);
 
   return { status, error, matches, leagues, data };
 }
